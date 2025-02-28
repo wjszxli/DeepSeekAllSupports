@@ -1,7 +1,7 @@
 {
     "name": "DeepSeekAllSupports",
     "displayName": "DeepSeekAllSupports",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "browserslist": "Chrome >= 96",
     "private": true,
     "description": "suport all servers in deepseek",
