@@ -1,58 +1,26 @@
-import {
-    CloseCircleTwoTone,
-    CopyOutlined,
-    PushpinOutlined,
-    PushpinTwoTone,
-    SyncOutlined,
-    UserOutlined,
-} from '@ant-design/icons';
-import type { BubbleProps } from '@ant-design/x';
-import { Bubble, Sender, Suggestion, XProvider } from '@ant-design/x';
-import { Alert, Button, Flex, message, Space, Tooltip, Typography } from 'antd';
-import { useEffect, useRef, useState } from 'react';
+import { CloseCircleFilled, PushpinOutlined, PushpinFilled } from '@ant-design/icons';
+import { Alert, Tooltip, Typography } from 'antd';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
-import { chatAIStream } from '@/service';
-import type { IMessage } from '@/typings';
-import { isLocalhost, removeChatBox, removeChatButton } from '@/utils';
-import { PROVIDERS_DATA, tags } from '@/utils/constant';
-import { md } from '@/utils/markdownRenderer';
+import { removeChatBox, removeChatButton } from '@/utils';
 import storage from '@/utils/storage';
 
 import Config from '../Config';
-import Think from '../Think';
+import ChatInterface from '../ChatInterface';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useDraggable } from '@/hooks/useDraggable';
 
-const renderMarkdown: BubbleProps['messageRender'] = (content: string) => (
-    <Typography style={{ direction: 'ltr' }}>
-        <div
-            style={{ textAlign: 'left' }}
-            dangerouslySetInnerHTML={{ __html: md.render(content) }}
-        />
-    </Typography>
-);
-
-const fooAvatar: React.CSSProperties = {
-    color: '#f56a00',
-    backgroundColor: '#fde3cf',
-};
-
-const barAvatar: React.CSSProperties = {
-    color: '#fff',
-    backgroundColor: '#87d068',
-};
-
-interface IBubbleListProps extends BubbleProps {
-    key: number;
-}
-
-const ChatBox = ({ x, y, text }: { x: number; y: number; text: string }) => {
-    const [messages, setMessages] = useState<string | undefined>(text);
-    const [loading, setLoading] = useState(false);
-    const [bubbleList, setBubbleList] = useState<IBubbleListProps[]>([]);
+const ChatWindow = ({ x, y, text }: { x: number; y: number; text?: string }) => {
+    const { t, currentLanguage } = useLanguage();
     const [isSelectProvider, setIsSelectProvider] = useState(false);
     const [isPinned, setIsPinned] = useState(false);
     const [position, setPosition] = useState({ x, y });
-    const [size, setSize] = useState({ width: 500, height: 500 });
+    const [size, setSize] = useState({ width: 500, height: 600 });
+    const [isVisible, setIsVisible] = useState(false);
     const chatBoxRef = useRef<HTMLDivElement | null>(null);
+
+    // 保存初始位置用于重置
+    const initialPosition = useRef({ x, y });
 
     const initData = async () => {
         try {
@@ -60,156 +28,19 @@ const ChatBox = ({ x, y, text }: { x: number; y: number; text: string }) => {
             const config = await storage.getConfig();
             if (!config.selectedProvider) return;
 
-            const provider = PROVIDERS_DATA[config.selectedProvider];
-            if (!provider) return;
-
             setIsSelectProvider(true);
 
-            const bubble: IBubbleListProps = {
-                key: Date.now(),
-                placement: 'start',
-                messageRender: renderMarkdown,
-                content: `我是 AI 助手，可以回答你的任何的问题`,
-                loading: false,
-                avatar: { icon: <UserOutlined />, style: fooAvatar },
-            };
             const { width, height } = await storage.getChatBoxSize();
-            setSize({ width, height });
+            setSize({ width: width || 500, height: height || 600 });
 
-            setBubbleList([bubble]);
+            // Start the animation after initialization
+            setTimeout(() => setIsVisible(true), 50);
         } catch (error) {
             console.error('Failed to initialize data:', error);
         }
     };
 
-    useEffect(() => {
-        initData();
-    }, []);
-
-    const sendChat = async () => {
-        if (!messages) {
-            message.error('请输入你要问的问题！');
-            return;
-        }
-
-        const userBubble: IBubbleListProps = {
-            key: Date.now() + 1,
-            placement: 'end',
-            messageRender: renderMarkdown,
-            content: messages,
-            loading: false,
-            avatar: { icon: <UserOutlined />, style: barAvatar },
-        };
-
-        const loadingBubble: IBubbleListProps = {
-            key: Date.now() + 2,
-            placement: 'start',
-            messageRender: renderMarkdown,
-            loading: true,
-            content: '',
-            avatar: { icon: <UserOutlined />, style: fooAvatar },
-        };
-
-        setBubbleList((prevBubbleList) => [...prevBubbleList, userBubble, loadingBubble]);
-
-        try {
-            setLoading(true);
-            const previousMessages: IMessage[] = (await storage.get('chatHistory')) || [];
-
-            const sendMessage = [...previousMessages, { role: 'user', content: messages }];
-            let content = '';
-            let reasoningContent = '';
-
-            let isReasoning = false;
-
-            chatAIStream(sendMessage, async (chunk) => {
-                const { data, done } = chunk;
-
-                const { selectedProvider } = await storage.getConfig();
-                if (isLocalhost(selectedProvider)) {
-                    const tagPattern = new RegExp(`<(${tags.join('|')})>`, 'i');
-                    const closeTagPattern = new RegExp(`</(${tags.join('|')})>`, 'i');
-
-                    const openTagMatch = data.match(tagPattern);
-                    const closeTagMatch = data.match(closeTagPattern);
-
-                    if (!isReasoning && openTagMatch) {
-                        isReasoning = true;
-                    } else if (isReasoning && !closeTagMatch) {
-                        reasoningContent += data;
-                    } else if (isReasoning && closeTagMatch) {
-                        isReasoning = false;
-                    } else if (!isReasoning && !done) {
-                        content += data;
-                    }
-                } else if (!done) {
-                    if (!data.startsWith('data: ')) return;
-
-                    const chunkStringData = data.slice(6);
-                    const chunkData = JSON.parse(chunkStringData);
-                    const { choices } = chunkData;
-                    if (choices?.[0]?.delta?.content) {
-                        content += chunkData.choices[0].delta.content;
-                    } else if (choices?.[0]?.delta?.reasoning_content) {
-                        reasoningContent += chunkData.choices[0].delta.reasoning_content;
-                    }
-                }
-
-                if (done) {
-                    const updatedMessages = [...sendMessage, { role: 'assistant', content }];
-                    await storage.set('chatHistory', updatedMessages);
-                    setLoading(false);
-                    setBubbleList((prevBubbleList) =>
-                        prevBubbleList.map((bubble) =>
-                            bubble.key === loadingBubble.key
-                                ? {
-                                      ...bubble,
-                                      loading: false,
-                                      footer: (
-                                          <Space>
-                                              <Button
-                                                  color="default"
-                                                  variant="text"
-                                                  size="small"
-                                                  icon={<CopyOutlined />}
-                                                  onClick={() => copyToClipboard(content)}
-                                              />
-                                              <Button
-                                                  color="default"
-                                                  variant="text"
-                                                  size="small"
-                                                  icon={<SyncOutlined />}
-                                                  onClick={() => regenerateResponse()}
-                                              />
-                                          </Space>
-                                      ),
-                                  }
-                                : bubble,
-                        ),
-                    );
-                } else {
-                    setBubbleList((prevBubbleList) =>
-                        prevBubbleList.map((bubble) =>
-                            bubble.key === loadingBubble.key
-                                ? {
-                                      ...bubble,
-                                      content,
-                                      loading: !content,
-                                      header: reasoningContent ? (
-                                          <Think context={reasoningContent} />
-                                      ) : null,
-                                  }
-                                : bubble,
-                        ),
-                    );
-                }
-            });
-        } catch (error) {
-            message.error(error instanceof Error ? error.message : String(error));
-            setLoading(false);
-        }
-    };
-
+    // 恢复 onCancel 方法，用于中止请求
     const onCancel = () => {
         try {
             // @ts-ignore
@@ -219,30 +50,93 @@ const ChatBox = ({ x, y, text }: { x: number; y: number; text: string }) => {
         } catch (error) {
             console.error('Failed to abort:', error);
         }
-        setLoading(false);
     };
 
-    const handleMouseDown = (e: React.MouseEvent) => {
-        if (isPinned) return;
+    useEffect(() => {
+        initData();
+        // 保证组件挂载时可以正确设置位置
+        setPosition(initialPosition.current);
 
-        const startX = e.clientX;
-        const startY = e.clientY;
-        const startPos = { ...position };
+        // 确保窗口在可视区域内
+        ensureWindowVisible();
 
-        const handleMouseMove = (moveEvent: MouseEvent) => {
-            const newX = startPos.x + (moveEvent.clientX - startX);
-            const newY = startPos.y + (moveEvent.clientY - startY);
+        // 添加 ESC 键监听
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onCancel();
+                removeChatBox();
+                removeChatButton();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+
+            // 组件卸载时中止任何未完成的请求
+            onCancel();
+        };
+    }, []);
+
+    // 确保窗口在可视区域内，增加节流控制
+    const ensureWindowVisible = useCallback(() => {
+        // 如果正在拖拽，不执行边界检查
+        if (chatBoxRef.current?.classList.contains('dragging')) return;
+
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+
+        let newX = position.x;
+        let newY = position.y;
+
+        // 检查是否超出右边界
+        if (newX + size.width > viewportWidth) {
+            newX = viewportWidth - size.width - 20;
+        }
+
+        // 检查是否超出左边界
+        if (newX < 0) {
+            newX = 20;
+        }
+
+        // 检查是否超出底部
+        if (newY + size.height > viewportHeight) {
+            newY = viewportHeight - size.height - 20;
+        }
+
+        // 检查是否超出顶部
+        if (newY < 0) {
+            newY = 20;
+        }
+
+        // 只有当位置真正改变时才更新状态
+        if (Math.abs(newX - position.x) > 1 || Math.abs(newY - position.y) > 1) {
             setPosition({ x: newX, y: newY });
-        };
+        }
+    }, [position.x, position.y, size.width, size.height]);
 
-        const handleMouseUp = () => {
-            document.removeEventListener('mousemove', handleMouseMove);
-            document.removeEventListener('mouseup', handleMouseUp);
-        };
+    // 监听语言变更
+    useEffect(() => {
+        // 强制组件更新以反映新语言
+        if (chatBoxRef.current) {
+            // 强制重新渲染整个聊天窗口
+            setIsVisible(false);
+            setTimeout(() => {
+                setIsVisible(true);
+            }, 10);
+            
+            // 触发事件让子组件知道语言已变更
+            window.dispatchEvent(new CustomEvent('languageUpdated', { detail: { locale: currentLanguage } }));
+        }
+    }, [currentLanguage]);
 
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', handleMouseUp);
-    };
+    // 语言变更时保持位置不变，现在使用 currentLanguage
+    useEffect(() => {
+        ensureWindowVisible();
+    }, [currentLanguage, ensureWindowVisible]);
+
+    const { handleMouseDown: dragHandleMouseDown } = useDraggable({ x, y }, chatBoxRef, isPinned);
 
     const handleResizeMouseDown = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -253,7 +147,7 @@ const ChatBox = ({ x, y, text }: { x: number; y: number; text: string }) => {
         const handleMouseMove = (moveEvent: MouseEvent) => {
             const newWidth = startSize.width + (moveEvent.clientX - startX);
             const newHeight = startSize.height + (moveEvent.clientY - startY);
-            if (newWidth < 360 || newHeight < 300) return;
+            if (newWidth < 360 || newHeight < 400) return;
             setSize({ width: newWidth, height: newHeight });
             storage.setChatBoxSize({ width: newWidth, height: newHeight });
         };
@@ -267,148 +161,125 @@ const ChatBox = ({ x, y, text }: { x: number; y: number; text: string }) => {
         document.addEventListener('mouseup', handleMouseUp);
     };
 
-    const copyToClipboard = (content: string) => {
-        navigator.clipboard
-            .writeText(content)
-            .then(() => {
-                message.success('内容已复制到剪贴板');
-            })
-            .catch(() => {
-                message.error('复制失败');
+    useEffect(() => {
+        // 监控窗口大小变化
+        if (chatBoxRef.current) {
+            const resizeObserver = new ResizeObserver(() => {
+                ensureWindowVisible();
             });
-    };
 
-    const regenerateResponse = async () => {
-        onCancel();
-        await sendChat();
-    };
+            resizeObserver.observe(chatBoxRef.current);
+
+            return () => {
+                resizeObserver.disconnect();
+            };
+        }
+
+        return () => {};
+    }, []);
+
+    useEffect(() => {
+        const handleMaintainPosition = () => {
+            // 强制重新应用当前位置
+            const currentPos = { ...position };
+            setPosition({ x: -9999, y: -9999 });
+            setTimeout(() => {
+                setPosition(currentPos);
+            }, 50);
+        };
+
+        window.addEventListener('maintainChatPosition', handleMaintainPosition);
+
+        return () => {
+            window.removeEventListener('maintainChatPosition', handleMaintainPosition);
+        };
+    }, [position]);
 
     return (
         <div
             ref={chatBoxRef}
+            className={`ai-chat-box ${isVisible ? 'visible' : ''}`}
             style={{
-                position: 'absolute',
-                top: `${position.y + 10}px`,
+                position: 'fixed',
                 left: `${position.x}px`,
-                zIndex: 99999,
-                background: 'white',
-                boxShadow: '0 0 10px rgba(0,0,0,0.1)',
-                borderRadius: '8px',
-                height: size.height,
-                width: size.width,
+                top: `${position.y}px`,
+                width: `${size.width}px`,
+                height: `${size.height}px`,
+                display: 'flex',
+                flexDirection: 'column',
+                backgroundColor: '#ffffff',
+                borderRadius: '12px',
+                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.08), 0 6px 12px rgba(0, 0, 0, 0.05)',
+                overflow: 'hidden',
+                zIndex: 2147483647,
+                opacity: isVisible ? 1 : 0,
+                transform: isVisible ? 'translate3d(0, 0, 0)' : 'translate3d(0, 20px, 0)',
+                transition: 'opacity 0.3s ease',
+                WebkitBackfaceVisibility: 'hidden',
+                backfaceVisibility: 'hidden',
+                border: '1px solid rgba(229, 231, 235, 0.8)',
             }}
         >
             <div
-                style={{ height: 30, cursor: isPinned ? 'default' : 'move' }}
+                className="chat-window-header"
                 id="chatBoxHeader"
-                onMouseDown={handleMouseDown}
+                onMouseDown={dragHandleMouseDown}
             >
-                <div
-                    style={{
-                        position: 'absolute',
-                        right: 0,
-                        padding: 10,
-                        cursor: 'pointer',
-                    }}
-                    onClick={() => {
-                        setIsSelectProvider(false);
-                        removeChatButton();
-                        removeChatBox();
-                    }}
-                >
-                    <CloseCircleTwoTone twoToneColor="#eb2f96" style={{ fontSize: 20 }} />
-                </div>
-                <div
-                    style={{
-                        position: 'absolute',
-                        left: 0,
-                        padding: 10,
-                        cursor: 'pointer',
-                    }}
-                    onClick={async () => {
-                        setIsPinned(!isPinned);
-                    }}
-                >
-                    {isPinned ? (
-                        <Tooltip title="点我可以进行拖拽">
-                            <PushpinTwoTone style={{ fontSize: 20 }} />
-                        </Tooltip>
-                    ) : (
-                        <Tooltip title="点我固定位置">
-                            <PushpinOutlined style={{ fontSize: 20 }} />
-                        </Tooltip>
-                    )}
+                <Typography.Text strong style={{ fontSize: '14px', color: '#2c3e50' }}>
+                    {t('assistant')}
+                </Typography.Text>
+
+                <div className="chat-window-actions">
+                    <Tooltip title={isPinned ? 'Unpin' : 'Pin'} placement="bottom">
+                        <div
+                            className="header-action-button pin-button"
+                            onClick={async () => {
+                                setIsPinned(!isPinned);
+                            }}
+                        >
+                            {isPinned ? (
+                                <PushpinFilled style={{ fontSize: 16 }} />
+                            ) : (
+                                <PushpinOutlined style={{ fontSize: 16 }} />
+                            )}
+                        </div>
+                    </Tooltip>
+
+                    <Tooltip title={t('close')} placement="bottom">
+                        <div
+                            className="header-action-button close-button"
+                            onClick={() => {
+                                setIsSelectProvider(false);
+                                removeChatButton();
+                                removeChatBox();
+                            }}
+                        >
+                            <CloseCircleFilled style={{ fontSize: 16 }} />
+                        </div>
+                    </Tooltip>
                 </div>
             </div>
-            {!isSelectProvider && (
-                <Alert
-                    type="error"
-                    message="请先点击插件的图标选择一个服务商"
-                    style={{
-                        margin: 10,
-                    }}
-                />
+
+            {!isSelectProvider ? (
+                <div className="provider-alert-container">
+                    <Alert type="info" message={t('selectProviderFirst')} showIcon />
+                </div>
+            ) : (
+                <div className="chat-content-container">
+                    <ChatInterface initialText={text} />
+                </div>
             )}
-            <XProvider direction="ltr">
-                <Flex style={{ margin: 20, height: size.height - 120 }} vertical>
-                    <Bubble.List style={{ flex: 1 }} items={bubbleList} />
-                    {isSelectProvider ? (
-                        <Suggestion style={{ marginTop: 20 }} items={[]}>
-                            {({
-                                onTrigger,
-                                onKeyDown,
-                            }: {
-                                onTrigger: (state?: boolean) => void;
-                                onKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void;
-                            }) => {
-                                return (
-                                    <Sender
-                                        loading={loading}
-                                        value={messages}
-                                        // disabled={loading}
-                                        onChange={(nextVal: string) => {
-                                            if (nextVal === '/') {
-                                                onTrigger();
-                                            } else if (!nextVal) {
-                                                onTrigger(false);
-                                            }
-                                            setMessages(nextVal);
-                                        }}
-                                        onKeyDown={onKeyDown}
-                                        onCancel={() => {
-                                            onCancel();
-                                        }}
-                                        onSubmit={() => {
-                                            sendChat();
-                                        }}
-                                        placeholder="请输入你想要问的问题"
-                                    />
-                                );
-                            }}
-                        </Suggestion>
-                    ) : null}
-                </Flex>
-            </XProvider>
+
             <Config
                 width={size.width}
                 height={size.height}
                 parentInitData={initData}
                 onCancel={onCancel}
             />
-            <div
-                style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    right: 0,
-                    width: 20,
-                    height: 20,
-                    cursor: 'nwse-resize',
-                    backgroundColor: 'transparent',
-                }}
-                onMouseDown={handleResizeMouseDown}
-            />
+
+            <div className="resize-handle" onMouseDown={handleResizeMouseDown} />
         </div>
     );
 };
 
-export default ChatBox;
+export default ChatWindow;

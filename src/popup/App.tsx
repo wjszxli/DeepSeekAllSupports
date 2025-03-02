@@ -1,30 +1,61 @@
-import { Button, Form, Input, message, Select, Switch, Tooltip, Typography } from 'antd';
+import {
+    Button,
+    Form,
+    Input,
+    message,
+    Select,
+    Switch,
+    Tooltip,
+    Typography,
+    Divider,
+    Card,
+    Space,
+} from 'antd';
 import React, { useEffect, useState } from 'react';
+import { GlobalOutlined, SettingOutlined, GithubOutlined, RocketOutlined } from '@ant-design/icons';
 
 import { modelList, validateApiKey } from '@/service';
+import { t, getLocale, setLocale } from '@/services/i18n';
+import { locales, LocaleType } from '@/locales';
 import { isLocalhost } from '@/utils';
 import { GIT_URL, PROVIDERS_DATA, SHORTCUTS_URL } from '@/utils/constant';
 import storage from '@/utils/storage';
 
 import './App.scss';
 
-const layout = {
-    labelCol: { span: 6 },
-    wrapperCol: { span: 18 },
-};
-
 const { Option } = Select;
 
 const App: React.FC = () => {
     const [form] = Form.useForm();
-    const [loadings, setLoadings] = useState<string>('保存配置');
+    const [loadings, setLoadings] = useState<string>(t('saveConfig'));
     const [selectedProvider, setSelectedProvider] = useState('DeepSeek');
     const [models, setModels] = useState<Array<{ label: string; value: string }>>([]);
+    const [currentLocale, setCurrentLocale] = useState<LocaleType>(getLocale());
 
     const initData = async () => {
         const { selectedProvider, selectedModel } = await storage.getConfig();
 
         if (!selectedProvider) {
+            // Auto-select DeepSeek as default provider if none is set
+            console.log('No provider selected, setting default provider');
+            const defaultProvider = 'DeepSeek';
+            const defaultModel = PROVIDERS_DATA[defaultProvider].models[0].value;
+            
+            // Set default values in the form
+            form.setFieldsValue({
+                provider: defaultProvider,
+                model: defaultModel,
+                isIcon: true
+            });
+            
+            // Save default configuration 
+            await storage.setProviders(PROVIDERS_DATA);
+            await storage.setSelectedProvider(defaultProvider);
+            await storage.setSelectedModel(defaultModel);
+            await storage.setIsChatBoxIcon(true);
+            
+            setSelectedProvider(defaultProvider);
+            await getModels(defaultProvider);
             return;
         }
 
@@ -46,6 +77,22 @@ const App: React.FC = () => {
     useEffect(() => {
         initData();
     }, []);
+
+    // Listen for locale changes from the service
+    useEffect(() => {
+        // Add window event listener for locale changes
+        const handleLocaleChange = (event: CustomEvent<{ locale: LocaleType }>) => {
+            setCurrentLocale(event.detail.locale);
+            // Reload the form with translated texts
+            form.setFieldsValue(form.getFieldsValue());
+        };
+
+        window.addEventListener('localeChange', handleLocaleChange as EventListener);
+        
+        return () => {
+            window.removeEventListener('localeChange', handleLocaleChange as EventListener);
+        };
+    }, [form]);
 
     const getModels = async (selectedProvider: string | null) => {
         if (!selectedProvider) {
@@ -73,7 +120,7 @@ const App: React.FC = () => {
 
     const onFinish = async (values: any) => {
         console.log('values', values);
-        setLoadings('保存配置中');
+        setLoadings(t('savingConfig'));
         const { provider, apiKey, model, isIcon } = values;
 
         let providersData = await storage.getProviders();
@@ -88,8 +135,8 @@ const App: React.FC = () => {
         await storage.setSelectedModel(model);
         await storage.updateApiKey(provider, apiKey);
         await storage.setIsChatBoxIcon(isIcon);
-        message.success('配置已保存');
-        setLoadings('校验 api 是否正常');
+        message.success(t('configSaved'));
+        setLoadings(t('validatingApi'));
         onValidateApiKey();
     };
 
@@ -113,10 +160,10 @@ const App: React.FC = () => {
     const onValidateApiKey = async () => {
         try {
             await validateApiKey();
-            message.success('Api Key 校验通过，可以正常使用本工具');
-            setLoadings('保存配置');
+            message.success(t('apiValidSuccess'));
+            setLoadings(t('saveConfig'));
         } catch (error) {
-            setLoadings('保存配置');
+            setLoadings(t('saveConfig'));
             if (error instanceof Error) {
                 message.error(error.message);
             } else {
@@ -131,83 +178,174 @@ const App: React.FC = () => {
         });
     };
 
+    const handleLanguageChange = async (locale: LocaleType) => {
+        await setLocale(locale);
+        setCurrentLocale(locale);
+        
+        // Show success message
+        message.success(t('languageChanged'));
+        
+        // Force reload form with translations
+        setTimeout(() => {
+            form.setFieldsValue(form.getFieldsValue());
+        }, 50);
+        
+        // Inform content scripts about language change (if they're loaded)
+        try {
+            if (chrome && chrome.tabs) {
+                chrome.tabs.query({}, (tabs) => {
+                    tabs.forEach((tab) => {
+                        if (tab.id) {
+                            chrome.tabs.sendMessage(tab.id, { action: 'languageChanged', locale }).catch(() => {
+                                // Ignore errors - content script might not be loaded
+                            });
+                        }
+                    });
+                });
+            }
+        } catch (error) {
+            // Ignore any errors in this optional notification
+            console.log('Failed to notify tabs about language change:', error);
+        }
+    };
+
     return (
         <div className="app">
-            <h1>AI 工具</h1>
-            <Form {...layout} form={form} name="setting" className="form" onFinish={onFinish}>
-                <Form.Item
-                    label="服务商"
-                    name="provider"
-                    rules={[{ required: true, message: '请选择服务商' }]}
-                >
+            <Card className="app-container">
+                <div className="app-header">
+                    <Typography.Title level={2} className="app-title">
+                        <RocketOutlined /> {t('appTitle')}
+                    </Typography.Title>
                     <Select
-                        placeholder="请选择服务商"
-                        onChange={(value) => onProviderChange(value)}
-                        allowClear
+                        value={currentLocale}
+                        onChange={handleLanguageChange}
+                        className="language-selector"
+                        dropdownMatchSelectWidth={false}
+                        bordered={true}
+                        suffixIcon={<GlobalOutlined />}
+                        style={{ width: '150px' }}
                     >
-                        {(Object.keys(PROVIDERS_DATA) as Array<keyof typeof PROVIDERS_DATA>).map(
-                            (key) => (
+                        {(Object.keys(locales) as LocaleType[]).map((locale) => {
+                            const key = `language${locale.replace('-', '')}` as keyof typeof locales[typeof locale];
+                            return (
+                                <Option key={locale} value={locale}>
+                                    {t(key as string)}
+                                </Option>
+                            );
+                        })}
+                    </Select>
+                </div>
+
+                <Divider />
+
+                <Form
+                    form={form}
+                    name="setting"
+                    className="form"
+                    onFinish={onFinish}
+                    layout="vertical"
+                    requiredMark={false}
+                    size="large"
+                >
+                    <Form.Item
+                        className="form-item"
+                        label={t('serviceProvider')}
+                        name="provider"
+                        rules={[{ required: true, message: t('selectProvider') }]}
+                    >
+                        <Select
+                            placeholder={t('selectProvider')}
+                            onChange={(value) => onProviderChange(value)}
+                            allowClear
+                            style={{ fontSize: '16px' }}
+                        >
+                            {(Object.keys(PROVIDERS_DATA) as Array<keyof typeof PROVIDERS_DATA>).map((key) => (
                                 <Option key={key} value={key}>
                                     {PROVIDERS_DATA[key].name}
                                 </Option>
-                            ),
-                        )}
-                    </Select>
-                </Form.Item>
-                {!isLocalhost(selectedProvider) && (
-                    <Form.Item label="API Key" name="ApiKey">
-                        <>
-                            <Form.Item
-                                name="apiKey"
-                                noStyle
-                                rules={[{ required: true, message: '请输入您的 API Key' }]}
-                            >
-                                <Input placeholder="ApiKey 将存储在您的本地" />
-                            </Form.Item>
-                            <Tooltip title="快速获取 API key">
-                                <Typography.Link
-                                    href={PROVIDERS_DATA[selectedProvider].apiKeyUrl || ''}
-                                    target="_blank"
-                                >
-                                    获取 API Key
-                                </Typography.Link>
-                            </Tooltip>
-                        </>
+                            ))}
+                        </Select>
                     </Form.Item>
-                )}
 
-                <Form.Item
-                    label="模型选择"
-                    name="model"
-                    rules={[{ required: true, message: '请选择您要使用的模型' }]}
-                >
-                    <Select
-                        placeholder="请选择您要使用的模型"
-                        onChange={(value) => onModelChange(value)}
-                        options={models}
-                        allowClear
-                    />
-                </Form.Item>
-                <Form.Item
-                    label="是否选中文本出现图标"
-                    name="isIcon"
-                    rules={[{ required: true, message: '请选择是否选中文本出现图标' }]}
-                    initialValue={true}
-                >
-                    <Switch onChange={(value) => form.setFieldValue('isIcon', value)} />
-                </Form.Item>
-                <Form.Item wrapperCol={{ offset: 8, span: 16 }}>
-                    <Button type="primary" htmlType="submit" loading={loadings !== '保存配置'}>
-                        {loadings}
-                    </Button>
-                </Form.Item>
-            </Form>
-            <Typography.Link onClick={onSetShortcuts} style={{ padding: 20 }}>
-                设置快捷键
-            </Typography.Link>
-            <Typography.Link href={GIT_URL} target="_blank" style={{ padding: 20 }}>
-                给作者点赞 ｜ 联系作者
-            </Typography.Link>
+                    {!isLocalhost(selectedProvider) && (
+                        <Form.Item className="form-item" label={t('apiKey')} name="ApiKey">
+                            <>
+                                <Form.Item
+                                    name="apiKey"
+                                    noStyle
+                                    rules={[{ required: true, message: t('enterApiKey') }]}
+                                >
+                                    <Input placeholder={t('enterApiKey')} />
+                                </Form.Item>
+                                <div className="api-link">
+                                    <Tooltip title={t('getApiKey')}>
+                                        <Typography.Link
+                                            href={PROVIDERS_DATA[selectedProvider].apiKeyUrl || ''}
+                                            target="_blank"
+                                        >
+                                            {t('getApiKey')}
+                                        </Typography.Link>
+                                    </Tooltip>
+                                </div>
+                            </>
+                        </Form.Item>
+                    )}
+
+                    <Form.Item
+                        className="form-item"
+                        label={t('modelSelection')}
+                        name="model"
+                        rules={[{ required: true, message: t('selectModel') }]}
+                    >
+                        <Select
+                            placeholder={t('selectModel')}
+                            onChange={(value) => onModelChange(value)}
+                            options={models}
+                            allowClear
+                        />
+                    </Form.Item>
+
+                    <Form.Item
+                        className="form-item"
+                        label={t('showIcon')}
+                        name="isIcon"
+                        valuePropName="checked"
+                        rules={[{ required: true, message: t('showIcon') }]}
+                        initialValue={true}
+                    >
+                        <Switch />
+                    </Form.Item>
+
+                    <Divider />
+
+                    <Form.Item className="form-actions">
+                        <Button
+                            type="primary"
+                            htmlType="submit"
+                            loading={loadings !== t('saveConfig')}
+                            block
+                            size="large"
+                        >
+                            {loadings === t('validatingApi')
+                                ? t('validatingApi')
+                                : loadings === t('savingConfig')
+                                ? t('savingConfig')
+                                : t('saveConfig')}
+                        </Button>
+                    </Form.Item>
+                </Form>
+
+                <div className="app-footer">
+                    <Space split={<Divider type="vertical" />}>
+                        <Typography.Link onClick={onSetShortcuts} className="footer-link">
+                            <SettingOutlined /> {t('setShortcuts')}
+                        </Typography.Link>
+                        <Typography.Link href={GIT_URL} target="_blank" className="footer-link">
+                            <GithubOutlined /> {t('starAuthor')}
+                        </Typography.Link>
+                    </Space>
+                </div>
+            </Card>
         </div>
     );
 };

@@ -15,7 +15,6 @@ const storage = {
             chrome.storage.local.remove([key], () => resolve());
         });
     },
-
     //  读取数据
     get: <T>(key: string): Promise<T | null> => {
         return new Promise((resolve) => {
@@ -90,6 +89,26 @@ const storage = {
     },
     getIsChatBoxIcon: async () => {
         return await storage.get<boolean>('isIcon');
+    },
+
+    getLocale: async (): Promise<string | null> => {
+        try {
+            const result = await chrome.storage.local.get('locale');
+            return result.locale || null;
+        } catch (error) {
+            console.error('Failed to get locale:', error);
+            return null;
+        }
+    },
+
+    setLocale: async (locale: string): Promise<void> => {
+        try {
+            await chrome.storage.local.set({ locale });
+            // Dispatch a custom event to notify other components about locale change
+            window.dispatchEvent(new CustomEvent('localeChange', { detail: { locale } }));
+        } catch (error) {
+            console.error('Failed to set locale:', error);
+        }
     },
 };
 

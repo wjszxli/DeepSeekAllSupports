@@ -21,9 +21,12 @@ module.exports = (api) => {
     ];
 
     return {
-        presets: ['@babel/preset-typescript', envPreset],
+        presets: ['@babel/preset-env', '@babel/preset-react', '@babel/preset-typescript'],
         plugins: [
-            '@babel/plugin-transform-runtime',
+            '@babel/plugin-transform-class-properties',
+            '@babel/plugin-transform-private-methods',
+            '@babel/plugin-transform-private-property-in-object',
+            ['@babel/plugin-transform-runtime', { regenerator: true }],
             ['@babel/plugin-proposal-decorators', { decoratorsBeforeExport: true }],
             'lodash',
             importPlugin,
