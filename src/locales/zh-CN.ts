@@ -31,7 +31,7 @@ export const zhCN = {
     exampleSummarize: '总结这个网页',
     exampleMainPoints: '这篇文章的要点是什么？',
     exampleHowToUse: '如何使用这个信息？',
-    typeMessage: '输入您的消息...',
+    typeMessage: '输入 / 可以获得建议或直接输入您的消息...',
 
     // Chat interface
     send: '发送',
@@ -64,7 +64,7 @@ export const zhCN = {
     languageJa: '日本語',
     languageKo: '한국어',
     languageChanged: '语言已成功更改',
-    includeWebpageContent: '在问题中包含网页内容',
+    includeWebpage: '在问题中包含网页内容',
 
     // Slash command prompts
     translate: '翻译',

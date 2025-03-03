@@ -168,8 +168,6 @@ md.render = function (text: string) {
 
 // 优化代码块渲染器
 md.renderer.rules.fence = (() => {
-    const defaultFence = md.renderer.rules.fence;
-
     // @ts-expect-error
     return function (tokens, idx, options, env, self) {
         const token = tokens[idx];

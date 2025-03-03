@@ -19,11 +19,19 @@ const Config = (props: {
     const [form] = Form.useForm();
     const [models, setModels] = useState<Array<{ label: string; value: string }>>([]);
     const [configProviders, setConfigProviders] = useState<Record<string, ProviderConfig>>({});
+    const [availableProviders, setAvailableProviders] = useState<string[]>([]);
     const { t, currentLanguage } = useLanguage();
 
     const initData = async () => {
         const providers = await storage.getProviders();
         setConfigProviders(providers);
+
+        // 只过滤出已经设置了 API Key 的服务商
+        const providersWithApiKey = Object.keys(providers).filter((key) => {
+            const apiKey = providers[key]?.apiKey;
+            return apiKey !== null && apiKey !== undefined && apiKey.trim() !== '';
+        });
+        setAvailableProviders(providersWithApiKey);
 
         const { selectedProvider, selectedModel } = await storage.getConfig();
         if (!selectedProvider) {
@@ -42,14 +50,10 @@ const Config = (props: {
         initData();
     }, []);
 
-    // Listen for language changes
     useEffect(() => {
-        // Re-render form elements with new translations
         form.setFieldsValue(form.getFieldsValue());
 
-        // Listen for language updated events from parent components
         const handleLanguageUpdate = () => {
-            // Update form with current values to refresh translations
             form.setFieldsValue(form.getFieldsValue());
         };
 
@@ -65,6 +69,9 @@ const Config = (props: {
             setModels([]);
             return;
         }
+
+        // 先清空模型列表
+        setModels([]);
 
         if (isLocalhost(selectedProvider)) {
             const res = (await modelList(selectedProvider)) as {
@@ -92,19 +99,50 @@ const Config = (props: {
 
     const onProviderChange = async (value: string) => {
         props.onCancel();
+
+        // 先重置表单中的模型值
+        form.resetFields(['model']);
+
+        // 获取提供商数据并设置选中的提供商
         const providers = await storage.getProviders();
         await storage.setSelectedProvider(value);
+
+        // 获取模型列表
         await getModels(value);
+        console.log('isLocalhost(value)', isLocalhost(value))
+
+        // 获取模型列表后，根据情况设置默认模型
         if (!isLocalhost(value)) {
             const apiKey = providers[value]?.apiKey;
-            const model = providers[value]?.models[0].value;
-            const fieldsValue = { apiKey, model };
-            form.setFieldsValue(fieldsValue);
-            await storage.setSelectedModel(model);
+            const availableModels = providers[value]?.models || [];
+
+            if (availableModels.length > 0) {
+                const defaultModel = availableModels[0].value;
+                await storage.setSelectedModel(defaultModel);
+                form.setFieldsValue({
+                    apiKey,
+                    model: defaultModel,
+                });
+            } else {
+                // 如果没有模型，清空选择模型
+                await storage.setSelectedModel('');
+                form.setFieldsValue({
+                    apiKey,
+                    model: null,
+                });
+            }
         } else {
-            const model = providers[value]?.models[0].value;
-            form.setFieldsValue({ model });
-            await storage.setSelectedModel(model);
+            const availableModels = providers[value]?.models || [];
+
+            if (availableModels.length > 0) {
+                const defaultModel = availableModels[0].value;
+                await storage.setSelectedModel(defaultModel);
+                form.setFieldsValue({ model: defaultModel });
+            } else {
+                // 如果没有模型，清空选择模型
+                await storage.setSelectedModel('');
+                form.setFieldsValue({ model: undefined });
+            }
         }
     };
 
@@ -138,13 +176,11 @@ const Config = (props: {
                         getPopupContainer={(trigger) => trigger.parentElement || document.body}
                         style={{ width: props.width / 4 }}
                     >
-                        {(Object.keys(configProviders) as Array<keyof typeof configProviders>).map(
-                            (key) => (
-                                <Option key={key} value={key}>
-                                    {configProviders[key].name}
-                                </Option>
-                            ),
-                        )}
+                        {availableProviders.map((key) => (
+                            <Option key={key} value={key}>
+                                {configProviders[key]?.name || key}
+                            </Option>
+                        ))}
                     </Select>
                 </Form.Item>
                 <Form.Item

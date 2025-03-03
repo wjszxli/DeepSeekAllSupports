@@ -28,7 +28,12 @@ const { Option } = Select;
 
 const App: React.FC = () => {
     const [form] = Form.useForm();
-    const [loadings, setLoadings] = useState<string>(t('saveConfig'));
+    const LOADING_STATE = {
+        SAVE: 'SAVE',
+        SAVING: 'SAVING',
+        VALIDATING: 'VALIDATING',
+    };
+    const [loadingState, setLoadingState] = useState<string>(LOADING_STATE.SAVE);
     const [selectedProvider, setSelectedProvider] = useState('DeepSeek');
     const [models, setModels] = useState<Array<{ label: string; value: string }>>([]);
     const [currentLocale, setCurrentLocale] = useState<LocaleType>(getLocale());
@@ -37,24 +42,21 @@ const App: React.FC = () => {
         const { selectedProvider, selectedModel } = await storage.getConfig();
 
         if (!selectedProvider) {
-            // Auto-select DeepSeek as default provider if none is set
             console.log('No provider selected, setting default provider');
             const defaultProvider = 'DeepSeek';
             const defaultModel = PROVIDERS_DATA[defaultProvider].models[0].value;
-            
-            // Set default values in the form
+
             form.setFieldsValue({
                 provider: defaultProvider,
                 model: defaultModel,
-                isIcon: true
+                isIcon: true,
             });
-            
-            // Save default configuration 
+
             await storage.setProviders(PROVIDERS_DATA);
             await storage.setSelectedProvider(defaultProvider);
             await storage.setSelectedModel(defaultModel);
             await storage.setIsChatBoxIcon(true);
-            
+
             setSelectedProvider(defaultProvider);
             await getModels(defaultProvider);
             return;
@@ -79,17 +81,14 @@ const App: React.FC = () => {
         initData();
     }, []);
 
-    // Listen for locale changes from the service
     useEffect(() => {
-        // Add window event listener for locale changes
         const handleLocaleChange = (event: CustomEvent<{ locale: LocaleType }>) => {
             setCurrentLocale(event.detail.locale);
-            // Reload the form with translated texts
             form.setFieldsValue(form.getFieldsValue());
         };
 
         window.addEventListener('localeChange', handleLocaleChange as EventListener);
-        
+
         return () => {
             window.removeEventListener('localeChange', handleLocaleChange as EventListener);
         };
@@ -120,8 +119,7 @@ const App: React.FC = () => {
     };
 
     const onFinish = async (values: any) => {
-        console.log('values', values);
-        setLoadings(t('savingConfig'));
+        setLoadingState(LOADING_STATE.SAVING);
         const { provider, apiKey, model, isIcon } = values;
 
         let providersData = await storage.getProviders();
@@ -137,12 +135,16 @@ const App: React.FC = () => {
         await storage.updateApiKey(provider, apiKey);
         await storage.setIsChatBoxIcon(isIcon);
         message.success(t('configSaved'));
-        setLoadings(t('validatingApi'));
+        setLoadingState(LOADING_STATE.VALIDATING);
         onValidateApiKey();
     };
 
     const onProviderChange = async (value: string) => {
         setSelectedProvider(value);
+
+        // 首先清空模型选择
+        form.setFieldsValue({ model: undefined });
+
         const providers = await storage.getProviders();
         await storage.setSelectedProvider(value);
         await getModels(value);
@@ -162,9 +164,9 @@ const App: React.FC = () => {
         try {
             await validateApiKey();
             message.success(t('apiValidSuccess'));
-            setLoadings(t('saveConfig'));
+            setLoadingState(LOADING_STATE.SAVE);
         } catch (error) {
-            setLoadings(t('saveConfig'));
+            setLoadingState(LOADING_STATE.SAVE);
             if (error instanceof Error) {
                 message.error(error.message);
             } else {
@@ -182,30 +184,26 @@ const App: React.FC = () => {
     const handleLanguageChange = async (locale: LocaleType) => {
         await setLocale(locale);
         setCurrentLocale(locale);
-        
-        // Show success message
+
         message.success(t('languageChanged'));
-        
-        // Force reload form with translations
+
         setTimeout(() => {
             form.setFieldsValue(form.getFieldsValue());
         }, 50);
-        
-        // Inform content scripts about language change (if they're loaded)
+
         try {
             if (chrome && chrome.tabs) {
                 chrome.tabs.query({}, (tabs) => {
                     tabs.forEach((tab) => {
                         if (tab.id) {
-                            chrome.tabs.sendMessage(tab.id, { action: 'languageChanged', locale }).catch(() => {
-                                // Ignore errors - content script might not be loaded
-                            });
+                            chrome.tabs
+                                .sendMessage(tab.id, { action: 'languageChanged', locale })
+                                .catch(() => {});
                         }
                     });
                 });
             }
         } catch (error) {
-            // Ignore any errors in this optional notification
             console.log('Failed to notify tabs about language change:', error);
         }
     };
@@ -227,7 +225,11 @@ const App: React.FC = () => {
                         style={{ width: '150px' }}
                     >
                         {(Object.keys(locales) as LocaleType[]).map((locale) => {
-                            const key = `language${locale.replace('-', '')}` as keyof typeof locales[typeof locale];
+                            const localeWithoutHyphen = locale.replace('-', '');
+                            const value =
+                                localeWithoutHyphen.charAt(0).toUpperCase() +
+                                localeWithoutHyphen.slice(1);
+                            const key = `language${value}` as keyof typeof locales[typeof locale];
                             return (
                                 <Option key={locale} value={locale}>
                                     {t(key as string)}
@@ -260,7 +262,9 @@ const App: React.FC = () => {
                             allowClear
                             style={{ fontSize: '16px' }}
                         >
-                            {(Object.keys(PROVIDERS_DATA) as Array<keyof typeof PROVIDERS_DATA>).map((key) => (
+                            {(
+                                Object.keys(PROVIDERS_DATA) as Array<keyof typeof PROVIDERS_DATA>
+                            ).map((key) => (
                                 <Option key={key} value={key}>
                                     {PROVIDERS_DATA[key].name}
                                 </Option>
@@ -323,13 +327,13 @@ const App: React.FC = () => {
                         <Button
                             type="primary"
                             htmlType="submit"
-                            loading={loadings !== t('saveConfig')}
+                            loading={loadingState !== LOADING_STATE.SAVE}
                             block
                             size="large"
                         >
-                            {loadings === t('validatingApi')
+                            {loadingState === LOADING_STATE.VALIDATING
                                 ? t('validatingApi')
-                                : loadings === t('savingConfig')
+                                : loadingState === LOADING_STATE.SAVING
                                 ? t('savingConfig')
                                 : t('saveConfig')}
                         </Button>

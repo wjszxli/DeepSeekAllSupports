@@ -759,7 +759,7 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
                 <div className="context-label" onClick={toggleWebpageContext}>
                     <span>
                         <LinkOutlined className={useWebpageContext ? 'enabled' : 'disabled'} />
-                        {t('includeWebpageContent')}
+                        {t('includeWebpage')}
                     </span>
                 </div>
             </div>
