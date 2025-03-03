@@ -80,18 +80,10 @@ const MessageBubble = memo(
                     // 创建一个临时 div 来解析和修改 HTML 内容
                     const tempDiv = document.createElement('div');
                     tempDiv.innerHTML = md.render(message.text || '');
-
-                    // 查找所有 pre 元素并添加复制按钮
-                    const preElements = tempDiv.querySelectorAll('pre');
-                    preElements.forEach((pre, index) => {
-                        // 创建一个唯一的 ID 给这个代码块
-                        const blockId = `code-block-${message.id}-${index}`;
-                        pre.id = blockId;
-
-                        // 添加一个样式类
-                        pre.classList.add('code-block-wrapper');
-                    });
-
+                    
+                    // We don't need to add additional classes to pre elements
+                    // as they are already styled correctly by the markdown renderer
+                    
                     renderedHtml = tempDiv.innerHTML;
                     // Store in cache
                     markdownCache.set(cacheKey, renderedHtml);

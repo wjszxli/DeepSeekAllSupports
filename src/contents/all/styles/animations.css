@@ -207,9 +207,9 @@
     overflow: hidden;
     font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
     border-radius: 8px;
-    background-color: #f6f8fa;
-    border: 1px solid #eaecef;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    background-color: #0d1117;
+    border: 1px solid #30363d;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .code-header {
@@ -217,14 +217,14 @@
     justify-content: space-between;
     align-items: center;
     padding: 8px 12px;
-    background-color: #f1f1f1;
-    border-bottom: 1px solid #eaecef;
+    background-color: #161b22;
+    border-bottom: 1px solid #30363d;
 }
 
 .code-language {
     font-size: 12px;
     font-weight: 600;
-    color: #666;
+    color: #c9d1d9;
     text-transform: uppercase;
 }
 
@@ -239,9 +239,9 @@
     flex-direction: column;
     align-items: flex-end;
     padding: 8px 8px 8px 0;
-    color: #999;
-    background-color: #f1f1f1;
-    border-right: 1px solid #eaecef;
+    color: #6e7681;
+    background-color: #161b22;
+    border-right: 1px solid #30363d;
     user-select: none;
     font-size: 12px;
     min-width: 32px;
@@ -253,15 +253,17 @@
     display: block;
     padding: 0 4px;
     line-height: 1.5;
-    color: #999;
+    color: #6e7681;
 }
 
 .code-wrap {
     flex: 1;
     overflow-x: auto;
-    padding: 8px;
+    padding: 8px 12px;
     line-height: 1.5;
     white-space: pre;
+    color: #c9d1d9;
+    background-color: #0d1117;
 }
 
 .code-line {
@@ -277,23 +279,24 @@
     outline: none;
     transition: all 0.2s;
     border-radius: 4px;
-    border: 1px solid #eaecef;
-    background-color: rgba(255, 255, 255, 0.7);
+    border: 1px solid #30363d;
+    background-color: rgba(99, 110, 123, 0.2);
     display: flex;
     align-items: center;
     gap: 4px;
+    color: #c9d1d9;
 }
 
 .copy-button:hover {
     opacity: 1;
-    background-color: #fff;
+    background-color: rgba(99, 110, 123, 0.3);
 }
 
 .copy-success {
     animation: copy-success-animation 0.5s ease;
-    background-color: #e6ffed !important;
-    border-color: #34d058 !important;
-    color: #28a745 !important;
+    background-color: rgba(56, 139, 95, 0.4) !important;
+    border-color: #238636 !important;
+    color: #7ee787 !important;
 }
 
 @keyframes copy-success-animation {
@@ -306,6 +309,47 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+/* Syntax highlighting colors - GitHub Dark theme */
+.hljs-keyword, .hljs-selector-tag {
+    color: #ff7b72;
+}
+
+.hljs-built_in, .hljs-name {
+    color: #79c0ff;
+}
+
+.hljs-attr, .hljs-attribute, .hljs-number, .hljs-selector-attr {
+    color: #d2a8ff;
+}
+
+.hljs-string, .hljs-selector-id, .hljs-selector-class, .hljs-quote, .hljs-template-tag, .hljs-deletion {
+    color: #a5d6ff;
+}
+
+.hljs-title, .hljs-section {
+    color: #d2a8ff;
+}
+
+.hljs-comment {
+    color: #8b949e;
+}
+
+.hljs-meta, .hljs-meta-keyword {
+    color: #f0883e;
+}
+
+.hljs-variable, .hljs-template-variable {
+    color: #ffa657;
+}
+
+.hljs-type, .hljs-params {
+    color: #79c0ff;
+}
+
+.hljs-function {
+    color: #d2a8ff;
 }
 
 /* Modern elegant color palette */

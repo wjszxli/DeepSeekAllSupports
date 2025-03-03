@@ -42,7 +42,6 @@ export const zhCN = {
     sendMessage: '发送消息...',
     interfaceSettings: '界面设置',
 
-
     // Messages
     errorProcessing: '抱歉，处理您的请求时出错。请重试。',
     errorRegenerating: '抱歉，重新生成回复时出错。请重试。',
@@ -50,7 +49,7 @@ export const zhCN = {
     failedCopy: '复制文本失败',
     codeCopied: '代码已复制到剪贴板',
     failedCodeCopy: '复制代码失败',
-    copyMessage:'复制成功',
+    copyMessage: '复制成功',
 
     // Config component
     selectProviderFirst: '请先点击插件图标选择服务提供商',
@@ -66,7 +65,7 @@ export const zhCN = {
     languageKo: '한국어',
     languageChanged: '语言已成功更改',
     includeWebpageContent: '在问题中包含网页内容',
-    
+
     // Slash command prompts
     translate: '翻译',
     translatePrompt: '将以下文本翻译成中文：',
