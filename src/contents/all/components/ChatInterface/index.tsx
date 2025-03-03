@@ -13,9 +13,11 @@ import './index.scss';
 import './promptSuggestions.css';
 import type { TranslationKey } from '@/contexts/LanguageContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import WebSearchToggle from '../WebSearchToggle';
 import storage from '@/utils/storage';
 import { useStableCallback, useThrottledCallback } from '@/utils/reactOptimizations';
 import { LRUCache } from '@/utils/memoryOptimization';
+import { performSearch, fetchWebContent } from '@/services/localChatService';
 
 // Extend the Window interface to include the abort controller
 declare global {
@@ -80,10 +82,10 @@ const MessageBubble = memo(
                     // 创建一个临时 div 来解析和修改 HTML 内容
                     const tempDiv = document.createElement('div');
                     tempDiv.innerHTML = md.render(message.text || '');
-                    
+
                     // We don't need to add additional classes to pre elements
                     // as they are already styled correctly by the markdown renderer
-                    
+
                     renderedHtml = tempDiv.innerHTML;
                     // Store in cache
                     markdownCache.set(cacheKey, renderedHtml);
@@ -431,82 +433,136 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
             }, 300);
 
             try {
-                // Get provider config to check if it's properly set up
-                const { selectedProvider, selectedModel } = await storage.getConfig();
+                // 检查是否启用了网络搜索
+                const webSearchEnabled = await storage.getWebSearchEnabled();
+                // 确保 enhancedMessage 始终是字符串类型
+                let enhancedMessage = inputMessage;
 
-                if (!selectedProvider) {
-                    setMessages((prev) => [
-                        ...prev.filter((msg) => !msg.isThinking),
-                        {
-                            id: Date.now() + 1,
-                            text: t('selectProvider'),
+                // 如果启用了网络搜索，先执行搜索
+                if (webSearchEnabled) {
+                    // 添加一条系统消息，通知用户正在搜索
+                    const searchingMessage: ChatMessage = {
+                        id: Date.now() + 1,
+                        text: t('searchingWeb' as any),
+                        sender: 'system',
+                    };
+                    setMessages((prev) => [...prev, searchingMessage]);
+
+                    // 执行网络搜索
+                    const searchResults = await performSearch(inputMessage);
+
+                    // 如果有搜索结果，获取网页内容
+                    if (searchResults.length > 0) {
+                        const contents = await Promise.all(
+                            searchResults.slice(0, 2).map((result) => fetchWebContent(result.link)),
+                        );
+
+                        // 构建包含搜索结果的增强消息
+                        const webContext = `
+Here is some recent information from the web that might help answer this query:
+
+${contents
+    .map(
+        (content, i) =>
+            `Source ${i + 1}: ${searchResults[i].title}\n${content.substring(0, 1500)}\n`,
+    )
+    .join('\n')}
+
+Based on this information and your knowledge, please answer this question: ${inputMessage}
+`;
+                        enhancedMessage = webContext;
+
+                        // 更新系统消息，告知用户搜索完成
+                        const searchCompleteMessage: ChatMessage = {
+                            id: Date.now() + 2,
+                            text: t('searchComplete' as any),
                             sender: 'system',
-                        },
-                    ]);
+                        };
+                        setMessages((prev) =>
+                            prev.map((msg) =>
+                                msg.id === searchingMessage.id ? searchCompleteMessage : msg,
+                            ),
+                        );
+                    } else {
+                        // 如果没有搜索结果，告知用户
+                        const noResultsMessage: ChatMessage = {
+                            id: Date.now() + 2,
+                            text: t('noSearchResults' as any),
+                            sender: 'system',
+                        };
+                        setMessages((prev) =>
+                            prev.map((msg) =>
+                                msg.id === searchingMessage.id ? noResultsMessage : msg,
+                            ),
+                        );
+                    }
+                }
+
+                const { selectedProvider } = await storage.getConfig();
+                const apiKey = await storage.getApiKey(selectedProvider || '');
+
+                if (!selectedProvider || !apiKey) {
+                    messageNotification.error(t('selectProviderFirst'));
                     setIsLoading(false);
-                    setShowThinking(false);
                     clearThinkingTimeout();
+                    setShowThinking(false);
                     return;
                 }
 
-                if (!selectedModel) {
-                    setMessages((prev) => [
-                        ...prev.filter((msg) => !msg.isThinking),
-                        {
-                            id: Date.now() + 1,
-                            text: t('selectModel'),
-                            sender: 'system',
-                        },
-                    ]);
-                    setIsLoading(false);
-                    setShowThinking(false);
-                    clearThinkingTimeout();
-                    return;
+                const messageId = Date.now() + 100;
+                setStreamingMessageId(messageId);
+
+                const streamingMessage: ChatMessage = {
+                    id: messageId,
+                    text: '',
+                    sender: 'ai',
+                };
+
+                setMessages((prev) => [...prev, streamingMessage]);
+
+                // 定义流式更新处理函数
+                const handleStreamUpdate = (chunk: string) => {
+                    setMessages((prev) =>
+                        prev.map((msg) =>
+                            msg.id === messageId ? { ...msg, text: msg.text + chunk } : msg,
+                        ),
+                    );
+                };
+
+                // 根据是否使用网页上下文选择适当的发送函数
+                if (useWebpageContext) {
+                    await sendMessageWithWebpageContext(
+                        enhancedMessage ?? '',
+                        true,
+                        handleStreamUpdate,
+                    );
+                } else {
+                    await sendMessage(enhancedMessage ?? '', handleStreamUpdate);
                 }
 
-                // Create an empty AI message placeholder that will be updated incrementally
-                const aiMessageId = Date.now() + 2; // Ensure unique ID
-                const handleStreamUpdate = createStreamUpdateHandler(aiMessageId);
-
-                // Call the appropriate service with streaming callback
-                await (useWebpageContext
-                    ? sendMessageWithWebpageContext(inputMessage, true, handleStreamUpdate)
-                    : sendMessage(inputMessage, handleStreamUpdate));
-
-                // Clean up
+                // 请求完成
                 setStreamingMessageId(null);
                 setIsLoading(false);
-                setShowThinking(false);
                 clearThinkingTimeout();
+                setShowThinking(false);
+                scrollToBottom();
             } catch (error) {
-                console.error('Error sending message:', error);
-                setMessages((prev) => {
-                    // Filter out any thinking indicators
-                    const filteredMessages = prev.filter((msg) => !msg.isThinking);
-                    return [
-                        ...filteredMessages,
-                        {
-                            id: Date.now() + 1,
-                            text: error instanceof Error ? error.message : t('errorProcessing'),
-                            sender: 'system',
-                        },
-                    ];
-                });
+                console.error('Error in handleSendMessage:', error);
+                messageNotification.error(t('errorProcessing'));
                 setIsLoading(false);
-                setStreamingMessageId(null);
-                setShowThinking(false);
                 clearThinkingTimeout();
+                setShowThinking(false);
             }
         },
         [
             inputMessage,
             isLoading,
             streamingMessageId,
-            t,
             useWebpageContext,
-            clearThinkingTimeout,
-            createStreamUpdateHandler,
             cancelStreamingResponse,
+            clearThinkingTimeout,
+            scrollToBottom,
+            t,
         ],
     );
 
@@ -762,6 +818,7 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
                         {t('includeWebpage')}
                     </span>
                 </div>
+                <WebSearchToggle />
             </div>
             <div className="messages-wrapper" ref={messagesWrapperRef}>
                 <div ref={messagesContainerRef} className="messages-container">

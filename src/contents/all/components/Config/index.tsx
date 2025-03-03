@@ -1,7 +1,7 @@
 import { Form, Select } from 'antd';
 import { useEffect, useState } from 'react';
 
-import { modelList } from '@/service';
+import { modelList } from '@/services';
 import type { ProviderConfig } from '@/typings';
 import { isLocalhost } from '@/utils';
 import { PROVIDERS_DATA } from '@/utils/constant';

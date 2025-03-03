@@ -77,4 +77,12 @@ export const zhCN = {
     codeReviewPrompt: '审查以下代码并提出改进建议：',
     rewrite: '重写',
     rewritePrompt: '重写以下文本，使其更专业：',
+
+    webSearch: '网络搜索',
+    webSearchTooltip: '启用网络搜索获取最新信息',
+    on: '开启',
+    off: '关闭',
+    searchingWeb: '正在搜索网络信息...',
+    searchComplete: '搜索完成，正在用AI处理结果...',
+    noSearchResults: '未找到搜索结果，仅使用AI知识回答...',
 };

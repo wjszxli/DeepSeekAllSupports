@@ -110,6 +110,14 @@ const storage = {
             console.error('Failed to set locale:', error);
         }
     },
+
+    setWebSearchEnabled: async (enabled: boolean): Promise<void> => {
+        await storage.set('webSearchEnabled', enabled);
+    },
+
+    getWebSearchEnabled: async (): Promise<boolean> => {
+        return (await storage.get<boolean>('webSearchEnabled')) ?? false;
+    },
 };
 
 export default storage;

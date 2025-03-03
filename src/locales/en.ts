@@ -57,6 +57,13 @@ export const en = {
   "exampleHowToUse": "How can I use this information?",
   "unpinWindow": "Unpin Window",
   "pinWindow": "Fixed Window",
+  "webSearch": "Web Search",
+  "webSearchTooltip": "Enable web search for real-time information",
+  "on": "On",
+  "off": "Off",
+  "searchingWeb": "Searching the web for information...",
+  "searchComplete": "Search complete. Processing results with AI...",
+  "noSearchResults": "No search results found. Using AI knowledge only...",
   
   // Slash command prompts
   "translate": "Translate",

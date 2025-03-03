@@ -38,3 +38,13 @@ export interface OllamaResponse {
     };
     done: boolean;
 }
+
+export interface ChatParams {
+    message: string;
+    provider: string;
+    model: string;
+    apiKey: string;
+    onMessage: (content: string) => void;
+    onError: (error: any) => void;
+    onFinish: (result: string) => void;
+}

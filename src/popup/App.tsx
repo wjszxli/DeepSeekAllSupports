@@ -14,7 +14,7 @@ import {
 import React, { useEffect, useState } from 'react';
 import { GlobalOutlined, SettingOutlined, GithubOutlined, RocketOutlined } from '@ant-design/icons';
 
-import { modelList, validateApiKey } from '@/service';
+import { modelList, validateApiKey } from '@/services';
 import { t, getLocale, setLocale } from '@/services/i18n';
 import type { LocaleType } from '@/locales';
 import { locales } from '@/locales';
