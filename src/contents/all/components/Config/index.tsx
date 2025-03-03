@@ -46,15 +46,15 @@ const Config = (props: {
     useEffect(() => {
         // Re-render form elements with new translations
         form.setFieldsValue(form.getFieldsValue());
-        
+
         // Listen for language updated events from parent components
         const handleLanguageUpdate = () => {
             // Update form with current values to refresh translations
             form.setFieldsValue(form.getFieldsValue());
         };
-        
+
         window.addEventListener('languageUpdated', handleLanguageUpdate);
-        
+
         return () => {
             window.removeEventListener('languageUpdated', handleLanguageUpdate);
         };
@@ -116,9 +116,8 @@ const Config = (props: {
 
     return (
         <div
-            className="config-container"
             style={{
-                marginBottom: '15px',
+                margin: '8px 0',
             }}
         >
             <Form form={form} layout="inline" style={{ marginLeft: 20 }}>

@@ -112,9 +112,9 @@ export const requestAIStream = async (
         chrome.runtime.onMessage.addListener(listener);
 
         const controller = new AbortController();
-        // @ts-expect-error
+        // @ts-ignore
         window.currentAbortController = controller;
-        // @ts-expect-error
+        // @ts-ignore
         window.currentAbortController.signal.addEventListener('abort', () => {
             chrome.runtime.sendMessage({ action: 'abortRequest' });
         });
@@ -133,7 +133,6 @@ export const requestAIStream = async (
             },
         );
 
-        // @ts-expect-error
         window.currentAbortController.signal.addEventListener('abort', () => {
             console.log('🚫 中止请求.......');
             onData({ data: '', done: true });
@@ -175,9 +174,9 @@ export const removeChatBox = async () => {
     const chatBox = document.getElementById(CHAT_BOX_ID);
     if (chatBox) chatBox.remove();
     await storage.remove('chatHistory');
-    // @ts-expect-error
+    // @ts-ignore
     if (window.currentAbortController) {
-        // @ts-expect-error
+        // @ts-ignore
         window.currentAbortController.abort();
         // @ts-expect-error
         window.currentAbortController = null;

@@ -42,7 +42,8 @@
         "lint:style": "stylelint --config .stylelintrc.json src/**/*.{css,less,scss}",
         "clean": "rimraf -rf ./extension ./dist ./*.zip ./*.crx",
         "reinstall": "rimraf -rf ./node_modules && pnpm",
-        "prepare": "husky install"
+        "prepare": "husky install",
+        "sync-translations": "ts-node scripts/syncTranslations.ts"
     },
     "dependencies": {
         "@ant-design/icons": "5.6.1",
@@ -52,6 +53,7 @@
         "@babel/plugin-transform-private-property-in-object": "7.25.9",
         "@babel/runtime": "7.26.9",
         "antd": "5.23.4",
+        "axios": "1.8.1",
         "dayjs": "1.11.6",
         "highlight.js": "11.11.1",
         "jquery": "3.6.1",

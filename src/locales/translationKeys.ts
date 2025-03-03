@@ -1,0 +1,4 @@
+// 自动生成的翻译键类型定义，请勿直接修改
+// Generated on: 2025-03-03T03:38:55.211Z
+
+export type TranslationKey = 'ok' | 'cancel' | 'save' | 'delete' | 'copy' | 'regenerate' | 'settings' | 'close' | 'appTitle' | 'saveConfig' | 'savingConfig' | 'serviceProvider' | 'selectProvider' | 'apiKey' | 'enterApiKey' | 'getApiKey' | 'modelSelection' | 'selectModel' | 'showIcon' | 'setShortcuts' | 'starAuthor' | 'configSaved' | 'validatingApi' | 'apiValidSuccess' | 'aiAssistant' | 'askAnything' | 'exampleSummarize' | 'exampleMainPoints' | 'exampleHowToUse' | 'typeMessage' | 'send' | 'thinking' | 'you' | 'assistant' | 'includeWebpage' | 'askWebpage' | 'sendMessage' | 'interfaceSettings' | 'errorProcessing' | 'errorRegenerating' | 'copied' | 'failedCopy' | 'codeCopied' | 'failedCodeCopy' | 'selectProviderFirst' | 'unpinWindow' | 'pinWindow' | 'language' | 'languageEn' | 'languageZhCN' | 'languageZhTW' | 'languageJa' | 'languageKo' | 'languageChanged';

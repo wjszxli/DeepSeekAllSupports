@@ -47,7 +47,7 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
         const unsubscribe = subscribeToLocaleChange((locale) => {
             setCurrentLanguage(locale);
         });
-        
+
         return () => {
             unsubscribe();
         };
@@ -57,16 +57,20 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     const t = (key: TranslationKey): string => {
         // 键名映射，处理不同版本的键名差异
         const keyMap: Record<string, string> = {
-            'includeWebpageContent': 'includeWebpage'
+            includeWebpageContent: 'includeWebpage',
         };
-        
+
         // 获取实际的键名
         const actualKey = keyMap[key as string] || key;
-        
+
         try {
-            return resources[currentLanguage][actualKey as keyof typeof resources[typeof currentLanguage]] || 
-                   resources['en'][actualKey as keyof typeof resources['en']] || 
-                   key as string;
+            return (
+                resources[currentLanguage][
+                    actualKey as keyof typeof resources[typeof currentLanguage]
+                ] ||
+                resources['en'][actualKey as keyof typeof resources['en']] ||
+                (key as string)
+            );
         } catch (error) {
             console.warn(`Translation key not found: ${key}`);
             return key as string;
@@ -80,11 +84,13 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
     };
 
     return (
-        <LanguageContext.Provider value={{ 
-            t, 
-            currentLanguage, 
-            setLocale: handleSetLocale 
-        }}>
+        <LanguageContext.Provider
+            value={{
+                t,
+                currentLanguage,
+                setLocale: handleSetLocale,
+            }}
+        >
             {children}
         </LanguageContext.Provider>
     );
@@ -96,6 +102,6 @@ export const useLanguage = (): LanguageContextType => {
     if (context === undefined) {
         throw new Error('useLanguage must be used within a LanguageProvider');
     }
-    
+
     return context;
 };
