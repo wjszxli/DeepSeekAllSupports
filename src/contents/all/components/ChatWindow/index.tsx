@@ -104,8 +104,8 @@ const ChatWindow = ({ x, y, text }: { x: number; y: number; text?: string }) => 
         try {
             const savedSize = localStorage.getItem('chatWindowSize');
             return savedSize ? JSON.parse(savedSize) : { width: 500, height: 600 };
-        } catch (e) {
-            console.error('Error reading saved size:', e);
+        } catch (error) {
+            console.error('Error reading saved size:', error);
             return { width: 500, height: 600 };
         }
     }, []);

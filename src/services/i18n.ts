@@ -1,4 +1,5 @@
-import { locales, LocaleType, DEFAULT_LOCALE, LocaleKey } from '@/locales';
+import type { LocaleType, LocaleKey } from '@/locales';
+import { locales, DEFAULT_LOCALE } from '@/locales';
 import storage from '@/utils/storage';
 
 // 使用更简单的实现
@@ -57,7 +58,7 @@ export const i18n = {
             return locales[i18nState.currentLocale][actualKey as keyof typeof locales[typeof i18nState.currentLocale]] || 
                    locales[DEFAULT_LOCALE][actualKey as keyof typeof locales[typeof DEFAULT_LOCALE]] || 
                    key as string;
-        } catch (error) {
+        } catch {
             console.warn(`Translation key not found: ${key}`);
             return key as string;
         }

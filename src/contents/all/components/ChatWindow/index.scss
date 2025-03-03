@@ -143,11 +143,11 @@
 .ai-chat-box.resizing {
     user-select: none;
     transition: none;
-    
+
     &::after {
         background: linear-gradient(135deg, transparent 50%, rgb(71 118 230 / 70%) 50%);
     }
-    
+
     .chat-content-container {
         pointer-events: none;
     }

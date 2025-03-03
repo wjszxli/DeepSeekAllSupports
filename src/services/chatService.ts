@@ -1,6 +1,6 @@
 import { extractWebpageContent } from '../utils/webContentExtractor';
 import { chatAIStream } from '@/service';
-import { IMessage } from '@/typings';
+import type { IMessage } from '@/typings';
 import storage from '@/utils/storage';
 
 /**

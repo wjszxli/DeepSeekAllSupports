@@ -9,7 +9,7 @@ export const en = {
   "copy": "Copy",
   "regenerate": "Regenerate",
   "settings": "Settings",
-  "close": "Close",
+  "stop": "Stop",
   "aiAssistant": "AI Assistant",
   "you": "You",
   "appTitle": "AI Tool",
@@ -56,5 +56,17 @@ export const en = {
   "exampleMainPoints": "What are the main points discussed here?",
   "exampleHowToUse": "How can I use this information?",
   "unpinWindow": "Unpin Window",
-  "pinWindow": "Fixed Window"
+  "pinWindow": "Fixed Window",
+  
+  // Slash command prompts
+  "translate": "Translate",
+  "translatePrompt": "Translate the following text to English: ",
+  "summarize": "Summarize",
+  "summarizePrompt": "Summarize the following text in a concise manner: ",
+  "explain": "Explain",
+  "explainPrompt": "Explain the following concept in simple terms: ",
+  "codeReview": "Code Review",
+  "codeReviewPrompt": "Review the following code and suggest improvements: ",
+  "rewrite": "Rewrite",
+  "rewritePrompt": "Rewrite the following text to make it more professional: "
 };

@@ -16,7 +16,7 @@ export async function extractWebpageContent(): Promise<string> {
             // Use identified main content areas
             mainElements.forEach((element) => {
                 // @ts-ignore
-                contentText += element.innerText + '\n\n';
+                contentText += `${element.innerText  }\n\n`;
             });
         } else {
             // Fallback: get the body text but exclude scripts, styles, etc.

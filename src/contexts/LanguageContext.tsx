@@ -1,11 +1,12 @@
-import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
+import type { ReactNode} from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { en } from '@/locales/en';
 import { zhCN } from '@/locales/zh-CN';
 import { zhTW } from '@/locales/zh-TW';
 import { ja } from '@/locales/ja';
 import { ko } from '@/locales/ko';
 import { getLocale, setLocale as setI18nLocale, subscribeToLocaleChange } from '@/services/i18n';
-import { LocaleType } from '@/locales';
+import type { LocaleType } from '@/locales';
 
 // 支持的语言
 type SupportedLanguages = LocaleType;
@@ -68,10 +69,10 @@ export const LanguageProvider: React.FC<{ children: ReactNode }> = ({ children }
                 resources[currentLanguage][
                     actualKey as keyof typeof resources[typeof currentLanguage]
                 ] ||
-                resources['en'][actualKey as keyof typeof resources['en']] ||
+                resources.en[actualKey as keyof typeof resources['en']] ||
                 (key as string)
             );
-        } catch (error) {
+        } catch {
             console.warn(`Translation key not found: ${key}`);
             return key as string;
         }

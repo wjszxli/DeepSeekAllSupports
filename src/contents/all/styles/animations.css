@@ -24,19 +24,6 @@
     }
 }
 
-@keyframes bounce {
-
-    0%,
-    80%,
-    100% {
-        transform: scale(0);
-    }
-
-    40% {
-        transform: scale(1.0);
-    }
-}
-
 @keyframes slide-in {
     from {
         opacity: 0;
@@ -68,15 +55,15 @@
 }
 
 .markdown-content h1 {
+    padding-bottom: 8px;
     font-size: 1.5em;
     border-bottom: 1px solid #eee;
-    padding-bottom: 8px;
 }
 
 .markdown-content h2 {
+    padding-bottom: 6px;
     font-size: 1.3em;
     border-bottom: 1px solid #eee;
-    padding-bottom: 6px;
 }
 
 .markdown-content p {
@@ -84,25 +71,25 @@
 }
 
 .markdown-content pre {
-    margin: 12px 0;
     padding: 12px;
+    margin: 12px 0;
     overflow-x: auto;
     background-color: #f6f8fa;
-    border-radius: 6px;
     border: 1px solid #eaecef;
+    border-radius: 6px;
 }
 
 .markdown-content code {
+    padding: 2px 4px;
     font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
     font-size: 0.9em;
-    padding: 2px 4px;
     background-color: rgba(27, 31, 35, 0.05);
     border-radius: 3px;
 }
 
 .markdown-content pre code {
-    font-size: 0.9em;
     padding: 0;
+    font-size: 0.9em;
     background-color: transparent;
     border-radius: 0;
 }
@@ -115,8 +102,8 @@
 }
 
 .markdown-content blockquote {
-    margin: 16px 0;
     padding: 0 16px;
+    margin: 16px 0;
     color: #6a737d;
     border-left: 4px solid #dfe2e5;
 }
@@ -145,8 +132,8 @@
 
 .markdown-content ul,
 .markdown-content ol {
-    margin: 8px 0;
     padding-left: 20px;
+    margin: 8px 0;
 }
 
 .markdown-content a {
@@ -159,10 +146,10 @@
 }
 
 .markdown-content hr {
-    margin: 16px 0;
     height: 1px;
-    border: 0;
+    margin: 16px 0;
     background-color: #dfe2e5;
+    border: 0;
 }
 
 /* Chat interface components */
@@ -218,18 +205,68 @@
     position: relative;
     margin: 16px 0;
     overflow: hidden;
-    font-family: SFMono-Regular, Consolas, Liberation Mono, Menlo, monospace;
+    font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
     border-radius: 8px;
     background-color: #f6f8fa;
     border: 1px solid #eaecef;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.code-copy-button {
-    position: absolute;
-    top: 0;
-    right: 0;
-    z-index: 2;
-    padding: 4px;
+.code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: #f1f1f1;
+    border-bottom: 1px solid #eaecef;
+}
+
+.code-language {
+    font-size: 12px;
+    font-weight: 600;
+    color: #666;
+    text-transform: uppercase;
+}
+
+.code-with-lines {
+    display: flex;
+    overflow-x: auto;
+    white-space: pre;
+}
+
+.line-numbers {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    padding: 8px 8px 8px 0;
+    color: #999;
+    background-color: #f1f1f1;
+    border-right: 1px solid #eaecef;
+    user-select: none;
+    font-size: 12px;
+    min-width: 32px;
+    text-align: right;
+    white-space: pre;
+}
+
+.line-number {
+    display: block;
+    padding: 0 4px;
+    line-height: 1.5;
+    color: #999;
+}
+
+.code-wrap {
+    flex: 1;
+    overflow-x: auto;
+    padding: 8px;
+    line-height: 1.5;
+    white-space: pre;
+}
+
+.code-line {
+    display: block;
+    line-height: 1.5;
 }
 
 .copy-button {
@@ -242,11 +279,27 @@
     border-radius: 4px;
     border: 1px solid #eaecef;
     background-color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .copy-button:hover {
     opacity: 1;
     background-color: #fff;
+}
+
+.copy-success {
+    animation: copy-success-animation 0.5s ease;
+    background-color: #e6ffed !important;
+    border-color: #34d058 !important;
+    color: #28a745 !important;
+}
+
+@keyframes copy-success-animation {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
 }
 
 .copy-icon {
@@ -394,8 +447,8 @@
     bottom: 0;
     z-index: 10 !important;
     display: flex !important;
-    align-items: flex-end !important;
     gap: 8px !important;
+    align-items: flex-end !important;
     padding: 12px 16px !important;
     background-color: white !important;
     border-top: 1px solid #e8e8e8 !important;
@@ -405,8 +458,8 @@
 .input-container .message-input {
     flex: 1;
     min-height: 40px;
-    border-radius: 8px !important;
     resize: none !important;
+    border-radius: 8px !important;
 }
 
 .input-container .send-button {
@@ -440,13 +493,13 @@
 
 .context-label {
     display: flex !important;
-    align-items: center !important;
     gap: 8px !important;
+    align-items: center !important;
     padding: 4px 8px !important;
-    color: #666 !important;
     font-size: 14px !important;
-    border-radius: 4px !important;
+    color: #666 !important;
     cursor: pointer !important;
+    border-radius: 4px !important;
 }
 
 /* Empty chat styling */
@@ -490,10 +543,10 @@
     padding: 8px 16px;
     color: #333;
     cursor: pointer;
-    transition: all 0.2s;
-    border-radius: 8px;
-    border: 1px solid #e0e0e0;
     background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    transition: all 0.2s;
 }
 
 .example:hover {
@@ -506,26 +559,34 @@
 .message-actions {
     display: flex;
     gap: 8px;
-    margin-top: 8px;
+    margin-left: auto;
+}
+
+.message-actions-bottom {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    padding-top: 12px;
+    margin-top: 16px;
+    border-top: 1px solid #f0f0f0;
 }
 
 .action-button {
     display: flex;
-    align-items: center;
     gap: 4px;
+    align-items: center;
     padding: 4px 8px;
-    color: #666;
     font-size: 12px;
-    transition: all 0.2s;
-    border-radius: 4px;
-    border: 1px solid #e0e0e0;
+    color: #666;
     background-color: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    transition: all 0.2s;
 }
 
 .action-button:hover {
     color: var(--primary-color);
     background-color: var(--primary-light);
-    border-color: var(--primary-color);
 }
 
 /* Improved AI thinking indicator */

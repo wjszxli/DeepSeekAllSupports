@@ -1,15 +1,20 @@
 import { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import { Button, Input, message as messageNotification, Typography } from 'antd';
-import { SendOutlined, LinkOutlined, CloseOutlined } from '@ant-design/icons';
+import {
+    SendOutlined,
+    LinkOutlined,
+    CloseOutlined,
+    CopyOutlined,
+    RedoOutlined,
+} from '@ant-design/icons';
 import { sendMessage, sendMessageWithWebpageContext } from '@/services/chatService';
 import { md } from '@/utils/markdownRenderer';
 import './index.scss';
-import { useLanguage, TranslationKey } from '@/contexts/LanguageContext';
+import './promptSuggestions.css';
+import type { TranslationKey } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import storage from '@/utils/storage';
-import {
-    useStableCallback,
-    useThrottledCallback,
-} from '@/utils/reactOptimizations';
+import { useStableCallback, useThrottledCallback } from '@/utils/reactOptimizations';
 import { LRUCache } from '@/utils/memoryOptimization';
 
 // Extend the Window interface to include the abort controller
@@ -26,6 +31,13 @@ interface ChatMessage {
     isThinking?: boolean;
 }
 
+// Define the Prompt interface
+interface Prompt {
+    key: string;
+    name: string;
+    content: string;
+}
+
 interface ChatInterfaceProps {
     initialText?: string;
 }
@@ -34,9 +46,7 @@ interface ChatInterfaceProps {
 interface MessageBubbleProps {
     message: ChatMessage;
     isStreaming: boolean;
-    copiedCodeBlock: string | null;
     t: (key: TranslationKey) => string;
-    copyCodeBlockToClipboard: (content: string, blockId: string) => void;
     copyToClipboard: (text: string) => void;
     regenerateResponse: () => void;
 }
@@ -55,7 +65,11 @@ const markdownCache = new LRUCache<string, string>(50);
 
 // Memoized message component for better performance
 const MessageBubble = memo(
-    ({ message, isStreaming, copiedCodeBlock, t, copyToClipboard }: MessageBubbleProps) => {
+    ({ message, isStreaming, t, copyToClipboard, regenerateResponse }: MessageBubbleProps) => {
+        const handleCopy = useCallback(() => {
+            copyToClipboard(message.text);
+        }, [copyToClipboard, message.text]);
+
         const renderMessageContent = useCallback(() => {
             if (message.sender === 'ai') {
                 // Check if we have this markdown in the cache
@@ -76,25 +90,6 @@ const MessageBubble = memo(
 
                         // 添加一个样式类
                         pre.classList.add('code-block-wrapper');
-
-                        // 获取代码内容
-                        const codeContent = pre.textContent || '';
-
-                        // 创建复制按钮容器
-                        const buttonContainer = document.createElement('div');
-                        buttonContainer.className = 'code-copy-button';
-                        buttonContainer.innerHTML = `
-                    <button class="copy-button" data-content="${encodeURIComponent(
-                        codeContent,
-                    )}" data-blockid="${blockId}">
-                        <span class="copy-icon">${
-                            copiedCodeBlock === blockId ? '✓' : t('copy')
-                        }</span>
-                    </button>
-                `;
-
-                        // 将按钮容器插入到 pre 元素的右上角
-                        pre.insertBefore(buttonContainer, pre.firstChild);
                     });
 
                     renderedHtml = tempDiv.innerHTML;
@@ -111,7 +106,7 @@ const MessageBubble = memo(
             } else {
                 return <div className="message-content">{message.text}</div>;
             }
-        }, [message, isStreaming, copiedCodeBlock, t]);
+        }, [message, isStreaming, t]);
 
         return (
             <div className={`message-bubble ${message.sender}`}>
@@ -119,20 +114,31 @@ const MessageBubble = memo(
                     <div className="sender-name">
                         {message.sender === 'user' ? t('you') : t('assistant')}
                     </div>
-                    {message.sender === 'ai' && !message.isThinking && (
-                        <div className="message-actions">
-                            <Button
-                                type="text"
-                                size="small"
-                                onClick={() => copyToClipboard(message.text)}
-                                title={t('copyMessage')}
-                            >
-                                {t('copy')}
-                            </Button>
-                        </div>
-                    )}
                 </div>
                 {renderMessageContent()}
+
+                {message.sender === 'ai' && !message.isThinking && !isStreaming && (
+                    <div className="message-actions-bottom">
+                        <Button
+                            type="text"
+                            size="small"
+                            onClick={handleCopy}
+                            icon={<CopyOutlined />}
+                            className="action-button"
+                        >
+                            {t('copy')}
+                        </Button>
+                        <Button
+                            type="text"
+                            size="small"
+                            onClick={regenerateResponse}
+                            icon={<RedoOutlined />}
+                            className="action-button"
+                        >
+                            {t('regenerate')}
+                        </Button>
+                    </div>
+                )}
             </div>
         );
     },
@@ -163,9 +169,7 @@ const EmptyChat = memo(({ t, handleExampleClick }: EmptyChatProps) => (
 const ThinkingIndicator = memo(({ t }: ThinkingIndicatorProps) => (
     <div className="message-bubble ai thinking">
         <div className="message-header">
-            <div className="sender-name">
-                {t('assistant')}
-            </div>
+            <div className="sender-name">{t('assistant')}</div>
         </div>
         <div className="thinking-indicator">
             {t('thinking')}
@@ -182,11 +186,13 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [inputMessage, setInputMessage] = useState(initialText || '');
     const [isLoading, setIsLoading] = useState(false);
-    const [useWebpageContext, setUseWebpageContext] = useState(false);
-    const [copiedCodeBlock, setCopiedCodeBlock] = useState<string | null>(null);
+    const [useWebpageContext, setUseWebpageContext] = useState(true);
     const [streamingMessageId, setStreamingMessageId] = useState<number | null>(null);
     const [showThinking, setShowThinking] = useState(true);
     const [isComposing, setIsComposing] = useState(false);
+    const [showPrompts, setShowPrompts] = useState(false);
+    const [filteredPrompts, setFilteredPrompts] = useState<Prompt[]>([]);
+    const [selectedPromptIndex, setSelectedPromptIndex] = useState<number>(-1);
     const messagesWrapperRef = useRef<HTMLDivElement>(null);
     const { t } = useLanguage();
     const messageIdCounter = useRef(0);
@@ -199,8 +205,47 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
     const isInputEmpty = useMemo(() => inputMessage.trim() === '', [inputMessage]);
     const shouldDisableButton = useMemo(
         () => isLoading || isInputEmpty || isComposing,
-        [isLoading, isInputEmpty, isComposing]
+        [isLoading, isInputEmpty, isComposing],
     );
+
+    // Define common prompts
+    const commonPrompts: Prompt[] = useMemo(
+        () => [
+            {
+                key: 'translate',
+                name: t('translate' as TranslationKey),
+                content: t('translatePrompt' as TranslationKey),
+            },
+            {
+                key: 'summary',
+                name: t('summarize' as TranslationKey),
+                content: t('summarizePrompt' as TranslationKey),
+            },
+            {
+                key: 'explain',
+                name: t('explain' as TranslationKey),
+                content: t('explainPrompt' as TranslationKey),
+            },
+            {
+                key: 'code',
+                name: t('codeReview' as TranslationKey),
+                content: t('codeReviewPrompt' as TranslationKey),
+            },
+            {
+                key: 'rewrite',
+                name: t('rewrite' as TranslationKey),
+                content: t('rewritePrompt' as TranslationKey),
+            },
+        ],
+        [t],
+    );
+
+    // Handle prompt selection
+    const handlePromptSelect = useCallback((prompt: Prompt) => {
+        setInputMessage(prompt.content);
+        setShowPrompts(false);
+        setSelectedPromptIndex(-1);
+    }, []);
 
     // Add a thinking message when AI is processing
     useEffect(() => {
@@ -240,37 +285,25 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
     }, [streamingMessageId]);
 
     // Reset copied state after 2 seconds
-    useEffect(() => {
-        if (copiedCodeBlock) {
-            const timer = setTimeout(() => {
-                setCopiedCodeBlock(null);
-            }, 2000);
+    // useEffect(() => {
+    //     if (messagesContainerRef.current) {
+    //         // Force re-render of the chat messages
+    //         setMessages((prevMessages) => [...prevMessages]);
 
-            return () => clearTimeout(timer);
-        }
-        return () => {};
-    }, [copiedCodeBlock]);
-
-    // Handle language changes
-    useEffect(() => {
-        if (messagesContainerRef.current) {
-            // Force re-render of the chat messages
-            setMessages((prevMessages) => [...prevMessages]);
-
-            // Update UI elements with translations
-            setTimeout(() => {
-                // Update copy buttons text
-                const copyButtons = document.querySelectorAll('.copy-button');
-                copyButtons.forEach((button) => {
-                    const blockId = button.getAttribute('data-blockid');
-                    const copyIcon = button.querySelector('.copy-icon');
-                    if (copyIcon && blockId) {
-                        copyIcon.textContent = copiedCodeBlock === blockId ? '✓' : t('copy');
-                    }
-                });
-            }, 50);
-        }
-    }, [t, copiedCodeBlock]);
+    //         // Update UI elements with translations
+    //         setTimeout(() => {
+    //             // Update copy buttons text
+    //             const copyButtons = document.querySelectorAll('.copy-button');
+    //             copyButtons.forEach((button) => {
+    //                 const blockId = button.dataset.blockid;
+    //                 const copyIcon = button.querySelector('.copy-icon');
+    //                 if (copyIcon && blockId) {
+    //                     copyIcon.textContent = blockId === 'code-block-0-0' ? '✓' : t('copy');
+    //                 }
+    //             });
+    //         }, 50);
+    //     }
+    // }, [t, messages]);
 
     // Clean up thinking timeout on unmount
     useEffect(() => {
@@ -297,29 +330,12 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
         scrollToBottom();
     }, [messages, streamingMessageId]);
 
-    // Function to copy code from pre blocks
-    const copyCodeBlockToClipboard = useCallback(
-        (codeContent: string, blockId: string) => {
-            navigator.clipboard
-                .writeText(codeContent)
-                .then(() => {
-                    setCopiedCodeBlock(blockId);
-                    messageNotification.success(t('codeCopied'));
-                })
-                .catch(() => {
-                    messageNotification.error(t('failedCodeCopy'));
-                });
-        },
-        [t],
-    );
-
-    // Helper function to copy message text to clipboard
     const copyToClipboard = useCallback(
         (text: string) => {
             navigator.clipboard
                 .writeText(text)
                 .then(() => {
-                    messageNotification.success(t('copied'));
+                    messageNotification.success(t('copied'), 2);
                 })
                 .catch(() => {
                     messageNotification.error(t('failedCopy'));
@@ -352,21 +368,21 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
                     const filteredMessages = prevMessages.filter((msg) => !msg.isThinking);
 
                     const existingMessage = filteredMessages.find((msg) => msg.id === aiMessageId);
-                    if (existingMessage) {
-                        return filteredMessages.map((msg) =>
-                            msg.id === aiMessageId
-                                ? {
-                                      ...msg,
-                                      text: partialResponse ? msg.text + partialResponse : msg.text,
-                                  }
-                                : msg,
-                        );
-                    } else {
-                        return [
-                            ...filteredMessages,
-                            { id: aiMessageId, text: partialResponse || '', sender: 'ai' },
-                        ];
-                    }
+                    return existingMessage
+                        ? filteredMessages.map((msg) =>
+                              msg.id === aiMessageId
+                                  ? {
+                                        ...msg,
+                                        text: partialResponse
+                                            ? msg.text + partialResponse
+                                            : msg.text,
+                                    }
+                                  : msg,
+                          )
+                        : [
+                              ...filteredMessages,
+                              { id: aiMessageId, text: partialResponse || '', sender: 'ai' },
+                          ];
                 });
             };
         },
@@ -379,7 +395,7 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
         if (window.currentAbortController) {
             window.currentAbortController.abort();
         }
-        
+
         // Update the UI state
         setStreamingMessageId(null);
         setIsLoading(false);
@@ -461,11 +477,9 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
                 const handleStreamUpdate = createStreamUpdateHandler(aiMessageId);
 
                 // Call the appropriate service with streaming callback
-                if (useWebpageContext) {
-                    await sendMessageWithWebpageContext(inputMessage, true, handleStreamUpdate);
-                } else {
-                    await sendMessage(inputMessage, handleStreamUpdate);
-                }
+                await (useWebpageContext
+                    ? sendMessageWithWebpageContext(inputMessage, true, handleStreamUpdate)
+                    : sendMessage(inputMessage, handleStreamUpdate));
 
                 // Clean up
                 setStreamingMessageId(null);
@@ -534,11 +548,9 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
             const handleStreamUpdate = createStreamUpdateHandler(aiMessageId);
 
             // Call the appropriate service with streaming callback
-            if (useWebpageContext) {
-                await sendMessageWithWebpageContext(lastUserMessage.text, true, handleStreamUpdate);
-            } else {
-                await sendMessage(lastUserMessage.text, handleStreamUpdate);
-            }
+            await (useWebpageContext
+                ? sendMessageWithWebpageContext(lastUserMessage.text, true, handleStreamUpdate)
+                : sendMessage(lastUserMessage.text, handleStreamUpdate));
 
             // Mark streaming as complete
             setStreamingMessageId(null);
@@ -590,9 +602,32 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
         setUseWebpageContext((prev) => !prev);
     }, []);
 
-    // Replace with direct onChange and add composition event handlers
+    // Modified to handle prompt placement
     const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-        setInputMessage(e.target.value);
+        const newValue = e.target.value;
+        setInputMessage(newValue);
+
+        // Check if the input starts with '/' and it's the first character or follows a newline
+        if (newValue === '/' || /(?:^|\n)\/$/.test(newValue)) {
+            setShowPrompts(true);
+            setFilteredPrompts(commonPrompts);
+        }
+        // If input starts with '/' followed by some text, filter prompts
+        else if (newValue.startsWith('/') && !newValue.includes(' ')) {
+            const searchTerm = newValue.slice(1).toLowerCase();
+            setShowPrompts(true);
+            setFilteredPrompts(
+                commonPrompts.filter(
+                    (prompt) =>
+                        prompt.key.toLowerCase().includes(searchTerm) ||
+                        prompt.name.toLowerCase().includes(searchTerm),
+                ),
+            );
+        }
+        // Hide prompts if input doesn't start with '/' or a space is found after '/'
+        else {
+            setShowPrompts(false);
+        }
     };
 
     const handleCompositionStart = () => {
@@ -607,6 +642,38 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
 
     // Replace the keydown handler with a stable callback
     const handleKeyDown = useStableCallback((e: React.KeyboardEvent) => {
+        // Navigation for prompt suggestions
+        if (showPrompts && filteredPrompts.length > 0) {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setSelectedPromptIndex((prev) =>
+                    prev < filteredPrompts.length - 1 ? prev + 1 : 0,
+                );
+                return;
+            }
+
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setSelectedPromptIndex((prev) =>
+                    prev > 0 ? prev - 1 : filteredPrompts.length - 1,
+                );
+                return;
+            }
+
+            if (e.key === 'Enter' && selectedPromptIndex >= 0) {
+                e.preventDefault();
+                handlePromptSelect(filteredPrompts[selectedPromptIndex]);
+                return;
+            }
+
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                setShowPrompts(false);
+                setSelectedPromptIndex(-1);
+                return;
+            }
+        }
+
         // Don't trigger send during IME composition
         if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
             e.preventDefault();
@@ -638,8 +705,64 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
         };
     }, [scrollToBottom]);
 
+    // Add copy button click handler with proper cleanup
+    useEffect(() => {
+        const handleCopyButtonClick = async (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            const copyButton = target.closest('.copy-button') as HTMLElement | null;
+            if (!copyButton) return;
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            // Get the code data attribute
+            const codeData = copyButton ? copyButton.getAttribute('data-code') : null;
+            const code = codeData ? decodeURIComponent(codeData) : null;
+
+            if (code) {
+                console.log('code', code);
+                navigator.clipboard
+                    .writeText(code)
+                    .then(() => {
+                        messageNotification.success(t('copied'), 2);
+                    })
+                    .catch(() => {
+                        messageNotification.error(t('failedCopy'));
+                    });
+            }
+        };
+
+        // Add the event listener
+        document.addEventListener('click', handleCopyButtonClick, true);
+
+        // Clean up the event listener when component unmounts
+        return () => {
+            document.removeEventListener('click', handleCopyButtonClick, true);
+        };
+    }, [t]);
+
     return (
         <div className="chat-interface-container">
+            {showPrompts && filteredPrompts.length > 0 ? (
+                <div className="prompt-suggestions-overlay">
+                    <div className="prompt-suggestions">
+                        {filteredPrompts.map((prompt, index) => (
+                            <div
+                                key={prompt.key}
+                                className={`prompt-item ${
+                                    index === selectedPromptIndex ? 'selected' : ''
+                                }`}
+                                onClick={() => handlePromptSelect(prompt)}
+                            >
+                                <div className="prompt-name">{prompt.name}</div>
+                                <div className="prompt-preview">
+                                    {prompt.content.slice(0, 60)}...
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            ) : null}
             <div className="chat-controls">
                 <div className="context-label" onClick={toggleWebpageContext}>
                     <span>
@@ -662,9 +785,7 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
                                     key={msg.id}
                                     message={msg}
                                     isStreaming={streamingMessageId === msg.id}
-                                    copiedCodeBlock={copiedCodeBlock}
                                     t={t}
-                                    copyCodeBlockToClipboard={copyCodeBlockToClipboard}
                                     copyToClipboard={copyToClipboard}
                                     regenerateResponse={regenerateResponse}
                                 />
@@ -674,25 +795,30 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
                 </div>
             </div>
             <div className="input-container">
-                <Input.TextArea
-                    value={inputMessage}
-                    onChange={handleInputChange}
-                    onCompositionStart={handleCompositionStart}
-                    onCompositionEnd={handleCompositionEnd}
-                    onKeyDown={handleKeyDown}
-                    placeholder={t('typeMessage')}
-                    autoSize={{ minRows: 1, maxRows: 6 }}
-                    className="message-input"
-                />
+                <div className="input-wrapper">
+                    <Input.TextArea
+                        value={inputMessage}
+                        onChange={handleInputChange}
+                        onCompositionStart={handleCompositionStart}
+                        onCompositionEnd={handleCompositionEnd}
+                        onKeyDown={handleKeyDown}
+                        placeholder={t('typeMessage')}
+                        autoSize={{ minRows: 1, maxRows: 6 }}
+                        className="message-input"
+                    />
+                </div>
                 <Button
                     type="primary"
                     icon={streamingMessageId ? <CloseOutlined /> : <SendOutlined />}
                     onClick={handleSendMessage}
                     loading={isLoading && !streamingMessageId}
-                    className={`send-button ${shouldDisableButton && !streamingMessageId ? 'disabled' : 'enabled'}`}
+                    className={`send-button ${
+                        shouldDisableButton && !streamingMessageId ? 'disabled' : 'enabled'
+                    }`}
                     disabled={shouldDisableButton && !streamingMessageId}
-                    title={streamingMessageId ? t('stopGeneration') : t('sendMessage')}
-                />
+                >
+                    {streamingMessageId ? t('stop') : t('send')}
+                </Button>
             </div>
         </div>
     );

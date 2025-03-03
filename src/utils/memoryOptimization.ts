@@ -118,7 +118,7 @@ export class ObjectPool<T> {
     constructor(factory: () => T, reset: (obj: T) => void, initialSize = 0) {
         this.factory = factory;
         this.reset = reset;
-        this.pool = Array(initialSize)
+        this.pool = new Array(initialSize)
             .fill(null)
             .map(() => this.factory());
     }
@@ -255,8 +255,8 @@ export class MemoryMonitor {
         if (window.gc) {
             try {
                 window.gc();
-            } catch (e) {
-                console.error('Failed to suggest garbage collection', e);
+            } catch (error) {
+                console.error('Failed to suggest garbage collection', error);
             }
         }
     }

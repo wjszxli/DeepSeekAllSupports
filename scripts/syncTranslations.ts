@@ -1,11 +1,12 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import axios from 'axios';
-import { execSync } from 'child_process';
+import { execSync } from 'node:child_process';
 
 // DeepSeek API 配置
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+const BASE_LANGUAGE = 'en';
 
 // 支持的语言列表
 const SUPPORTED_LANGUAGES = [
@@ -56,7 +57,7 @@ function parseTypeScriptFile(filePath: string, langCode: string): TranslationObj
             const tempFilePath = path.join(__dirname, 'temp_translation.js');
 
             // 替换 export 语句，提取对象内容
-            let processedContent = fileContent
+            const processedContent = fileContent
                 .replace(/export\s+const\s+\w+\s*=\s*/, 'module.exports = ')
                 .replace(/export\s+default\s+/, 'module.exports = ');
 
@@ -240,10 +241,10 @@ function saveLanguageFile(lang: string, data: TranslationObject): void {
 
         // 移除最后一个逗号
         if (result.endsWith(',\n')) {
-            result = result.slice(0, -2) + '\n';
+            result = `${result.slice(0, -2)  }\n`;
         }
 
-        return result + ' '.repeat(indent - 2) + '}';
+        return `${result + ' '.repeat(indent - 2)  }}`;
     };
 
     // 获取语言代码变量名（例如：zhCN, enUS）
@@ -291,15 +292,15 @@ async function main() {
     }
 
     // 读取源语言文件 (zh-CN)
-    const sourceLangPath = path.join(LOCALES_DIR, 'zh-CN.ts');
+    const sourceLangPath = path.join(LOCALES_DIR, `${BASE_LANGUAGE}.ts`);
     if (!fs.existsSync(sourceLangPath)) {
         throw new Error(`Source language file not found: ${sourceLangPath}`);
     }
 
-    const sourceData = parseTypeScriptFile(sourceLangPath, 'zh-CN');
+    const sourceData = parseTypeScriptFile(sourceLangPath, BASE_LANGUAGE);
     const sourceKeys = extractKeys(sourceData);
 
-    console.log(`📝 Found ${sourceKeys.length} keys in source language (zh-CN)`);
+    console.log(`📝 Found ${sourceKeys.length} keys in source language (${BASE_LANGUAGE})`);
 
     // 生成类型定义文件
     generateTypeDefinition(sourceKeys);

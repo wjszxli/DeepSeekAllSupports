@@ -16,7 +16,8 @@ import { GlobalOutlined, SettingOutlined, GithubOutlined, RocketOutlined } from 
 
 import { modelList, validateApiKey } from '@/service';
 import { t, getLocale, setLocale } from '@/services/i18n';
-import { locales, LocaleType } from '@/locales';
+import type { LocaleType } from '@/locales';
+import { locales } from '@/locales';
 import { isLocalhost } from '@/utils';
 import { GIT_URL, PROVIDERS_DATA, SHORTCUTS_URL } from '@/utils/constant';
 import storage from '@/utils/storage';

@@ -1,29 +1,29 @@
 @import url('~@/styles/reset.scss');
 
 .app {
-    padding: 20px;
     width: 600px;
     height: auto;
+    padding: 20px;
     margin: 0 auto;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 
     .app-container {
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-        border-radius: 12px;
         padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgb(0 0 0 / 8%);
     }
 
     .app-header {
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: space-between;
         margin-bottom: 20px;
 
         .app-title {
             margin: 0;
-            color: #1677ff;
-            font-weight: 600;
             font-size: 24px;
+            font-weight: 600;
+            color: #1677ff;
         }
 
         .language-selector {
@@ -54,15 +54,15 @@
     }
 
     .app-footer {
+        padding: 15px 0;
         margin-top: 20px;
         text-align: center;
-        padding: 15px 0;
 
         .footer-link {
+            margin: 0 10px;
+            font-size: 16px;
             color: #555;
             transition: all 0.3s;
-            font-size: 16px;
-            margin: 0 10px;
 
             &:hover {
                 color: #1677ff;

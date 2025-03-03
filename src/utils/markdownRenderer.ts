@@ -2,6 +2,18 @@ import hljs from 'highlight.js';
 import MarkdownIt from 'markdown-it';
 import mathjax3 from 'markdown-it-mathjax3';
 
+// Declare global messageNotification interface
+declare global {
+    interface Window {
+        messageNotification?: {
+            success: (
+                message: string | { message: string; placement?: string; duration?: number },
+            ) => void;
+            error: (message: string) => void;
+        };
+    }
+}
+
 // 使用 WeakMap 来缓存已处理过的数学公式
 const processedTexts = new Map();
 
@@ -79,7 +91,26 @@ const md = new MarkdownIt({
             return `<div class="code-wrap">${md.utils.escapeHtml(str)}</div>`;
         }
         try {
-            return `<div class="code-wrap">${hljs.highlight(str, { language: lang }).value}</div>`;
+            const highlighted = hljs.highlight(str, { language: lang }).value;
+            // Add line numbers to the highlighted code
+            const lines = highlighted.split('\n');
+
+            // Improve line numbers with line breaks preserved properly
+            const lineNumbers = lines
+                .map((_, index) => `<span class="line-number">${index + 1}</span>`)
+                .join('\n');
+
+            // Preserve line breaks in highlighted code
+            const codeWithLineBreaks = lines
+                .map((line) => `<span class="code-line">${line || ' '}</span>`)
+                .join('\n');
+
+            return `
+              <div class="code-with-lines">
+                <div class="line-numbers">${lineNumbers}</div>
+                <div class="code-wrap">${codeWithLineBreaks}</div>
+              </div>
+            `;
         } catch {
             return `<div class="code-wrap">${md.utils.escapeHtml(str)}</div>`;
         }
@@ -143,43 +174,28 @@ md.renderer.rules.fence = (() => {
     return function (tokens, idx, options, env, self) {
         const token = tokens[idx];
         const code = token.content.trim();
+        const lang = token.info || '';
 
         const rawHtml = defaultFence(tokens, idx, options, env, self);
 
+        // 创建编码后的代码字符串用于复制按钮
+        const encodedCode = encodeURIComponent(code);
+
         return `
-      <div>
+      <div class="code-block-wrapper">
+        <div class="code-header">
+          <span class="code-language">${lang || 'text'}</span>
+          <button class="copy-button" data-code="${encodedCode}">
+            <svg class="copy-icon" viewBox="0 0 24 24" width="16" height="16">
+              <path fill="currentColor" d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z" />
+            </svg>
+            <span>复制</span>
+          </button>
+        </div>
         <pre class="code-wrap">${rawHtml}</pre>
-        <button class="copy-button" data-code="${encodeURIComponent(code)}">
-          复制代码
-        </button>
       </div>
     `.trim();
     };
 })();
 
-// 使用事件委托处理复制按钮点击
-document.addEventListener(
-    'click',
-    async (event) => {
-        const target = event.target as HTMLElement;
-        const copyButton = target.closest('.copy-button');
-        if (!copyButton) return;
-
-        event.preventDefault();
-        event.stopPropagation();
-
-        // @ts-expect-error
-        const code = decodeURIComponent(copyButton?.dataset?.code);
-        if (code) {
-            try {
-                await navigator.clipboard.writeText(code);
-            } catch (error) {
-                console.error('Failed to copy:', error);
-            }
-        } else {
-            console.warn('No code text found to copy');
-        }
-    },
-    true,
-);
 export { md };

@@ -1,11 +1,12 @@
-import { useState, useRef, useCallback, RefObject } from 'react';
+import type { RefObject } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
 interface Position {
   x: number;
   y: number;
 }
 
-export function useDraggable(initialPosition: Position, ref: RefObject<HTMLElement>, isPinned: boolean = false) {
+export function useDraggable(initialPosition: Position, ref: RefObject<HTMLElement>, isPinned = false) {
   const [position, setPosition] = useState(initialPosition);
   const isDragging = useRef(false);
   

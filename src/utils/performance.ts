@@ -97,17 +97,17 @@ export function batchDOMUpdates(updates: Array<() => void>): void {
  * Set up lazy loading for images
  * @param imageSelector Selector for images to lazy load
  */
-export function setupLazyLoading(imageSelector: string = 'img[data-src]'): void {
+export function setupLazyLoading(imageSelector = 'img[data-src]'): void {
     // Check if IntersectionObserver is available
     if ('IntersectionObserver' in window) {
         const lazyImageObserver = new IntersectionObserver((entries) => {
             entries.forEach((entry) => {
                 if (entry.isIntersecting) {
                     const lazyImage = entry.target as HTMLImageElement;
-                    const src = lazyImage.getAttribute('data-src');
+                    const src = lazyImage.dataset.src;
                     if (src) {
                         lazyImage.src = src;
-                        lazyImage.removeAttribute('data-src');
+                        delete lazyImage.dataset.src;
                         lazyImageObserver.unobserve(lazyImage);
                     }
                 }
@@ -124,7 +124,7 @@ export function setupLazyLoading(imageSelector: string = 'img[data-src]'): void 
             const lazyImages = document.querySelectorAll(imageSelector);
             lazyImages.forEach((img) => {
                 const lazyImage = img as HTMLImageElement;
-                const src = lazyImage.getAttribute('data-src');
+                const src = lazyImage.dataset.src;
                 const windowObj = window as any;
                 if (
                     src &&
@@ -132,7 +132,7 @@ export function setupLazyLoading(imageSelector: string = 'img[data-src]'): void 
                     lazyImage.getBoundingClientRect().bottom >= 0
                 ) {
                     lazyImage.src = src;
-                    lazyImage.removeAttribute('data-src');
+                    delete lazyImage.dataset.src;
                 }
             });
         }

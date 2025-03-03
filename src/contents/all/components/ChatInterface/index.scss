@@ -1,9 +1,9 @@
 // 定义变量
 $primary-color: #4776e6;
 $danger-color: #e53e3e;
-$bg-color: rgba(255, 255, 255, 0.95);
-$bg-color-header: rgba(248, 250, 252, 0.9);
-$border-color: rgba(229, 231, 235, 0.7);
+$bg-color: rgb(255 255 255 / 95%);
+$bg-color-header: rgb(248 250 252 / 90%);
+$border-color: rgb(229 231 235 / 70%);
 $shadow-light: 0 10px 30px rgb(0 0 0 / 8%), 0 6px 12px rgb(0 0 0 / 5%);
 $border-radius: 12px;
 $transition-default: all 0.3s ease;
@@ -33,9 +33,9 @@ $transition-default: all 0.3s ease;
             padding: 9px 14px;
             cursor: pointer;
             background: #fff;
-            border: 1px solid rgba(229, 231, 235, 0.5);
+            border: 1px solid rgb(229 231 235 / 50%);
             border-radius: 10px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+            box-shadow: 0 1px 3px rgb(0 0 0 / 5%), 0 1px 2px rgb(0 0 0 / 3%);
             transition: all 0.2s ease;
 
             input[type='checkbox'] {
@@ -65,32 +65,32 @@ $transition-default: all 0.3s ease;
         }
 
         .settings-button {
-            border-radius: 10px;
-            background: #fff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
-            padding: 9px 14px;
-            height: auto;
-            border: 1px solid rgba(229, 231, 235, 0.5);
-            color: #4b5563;
-            transition: all 0.2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
+            height: auto;
+            padding: 9px 14px;
+            color: #4b5563;
+            background: #fff;
+            border: 1px solid rgb(229 231 235 / 50%);
+            border-radius: 10px;
+            box-shadow: 0 1px 3px rgb(0 0 0 / 5%), 0 1px 2px rgb(0 0 0 / 3%);
+            transition: all 0.2s ease;
 
             &:hover {
                 background: #f9fafb;
-                border-color: rgba(209, 213, 219, 0.8);
+                border-color: rgb(209 213 219 / 80%);
             }
         }
     }
 
     .settings-panel {
+        padding: 16px;
         margin-bottom: 15px;
         background: #fff;
-        padding: 16px;
+        border: 1px solid rgb(229 231 235 / 70%);
         border-radius: 12px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 6px rgba(0, 0, 0, 0.03);
-        border: 1px solid rgba(229, 231, 235, 0.7);
+        box-shadow: 0 1px 3px rgb(0 0 0 / 5%), 0 4px 6px rgb(0 0 0 / 3%);
         animation: fade-in 0.3s ease;
 
         .settings-title {
@@ -102,12 +102,12 @@ $transition-default: all 0.3s ease;
 
         .settings-option {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
 
             span {
-                color: #4b5563;
                 font-size: 14px;
+                color: #4b5563;
             }
 
             .ant-switch {
@@ -218,17 +218,17 @@ $transition-default: all 0.3s ease;
                     color: #4b5563;
                     text-align: left;
                     cursor: pointer;
-                    background-color: #ffffff;
+                    background-color: #fff;
                     border: 1px solid #e2e8f0;
-                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
                     border-radius: 8px;
+                    box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
                     transition: all 0.2s;
 
                     &:hover {
                         background-color: #f8fafc;
                         border-color: #cbd5e1;
+                        box-shadow: 0 4px 6px rgb(0 0 0 / 5%);
                         transform: translateY(-1px);
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
                     }
                 }
             }
@@ -237,33 +237,33 @@ $transition-default: all 0.3s ease;
         .message-bubble {
             position: relative;
             max-width: 88%;
-            margin-bottom: 18px;
             padding: 14px 18px;
+            margin-bottom: 18px;
             overflow: visible;
             word-wrap: break-word;
             border-radius: 14px;
-            animation: fade-in 0.3s ease-in-out;
             transition: all 0.2s ease;
+            animation: fade-in 0.3s ease-in-out;
 
             &.user {
                 align-self: flex-end;
                 margin-left: auto;
                 color: #fff;
-                box-shadow: 0 4px 12px rgba(78, 88, 222, 0.15);
                 background: linear-gradient(135deg, #4776e6 0%, #8e54e9 100%);
+                box-shadow: 0 4px 12px rgb(78 88 222 / 15%);
                 
                 .sender-name {
-                    color: rgba(255, 255, 255, 0.9);
+                    color: rgb(255 255 255 / 90%);
                     text-align: right;
                 }
             }
 
             &.ai {
                 align-self: flex-start;
-                background-color: #fff;
                 color: #333;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+                background-color: #fff;
                 border: 1px solid #f0f0f0;
+                box-shadow: 0 2px 4px rgb(0 0 0 / 4%);
                 
                 .sender-name {
                     color: #888;
@@ -276,24 +276,24 @@ $transition-default: all 0.3s ease;
 
                     .thinking-indicator {
                         display: flex;
-                        opacity: 1;
                         align-items: center;
-                        color: #4676fa;
                         font-weight: 500;
+                        color: #4676fa;
+                        opacity: 1;
                     }
                 }
             }
 
             &.streaming-message {
-                border-left: 3px solid #4676fa !important;
                 background-color: #f0f5ff !important;
+                border-left: 3px solid #4676fa !important;
             }
 
             &.system {
                 align-self: flex-start;
-                background-color: #fff2e8;
                 color: #333;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+                background-color: #fff2e8;
+                box-shadow: 0 2px 4px rgb(0 0 0 / 4%);
                 
                 .sender-name {
                     color: #d48806;
@@ -302,8 +302,8 @@ $transition-default: all 0.3s ease;
 
             .message-header {
                 display: flex;
-                justify-content: space-between;
                 align-items: center;
+                justify-content: space-between;
                 margin-bottom: 8px;
                 
                 .sender-name {
@@ -318,8 +318,8 @@ $transition-default: all 0.3s ease;
                 align-items: center;
                 padding: 6px 0;
                 margin: 4px 0;
-                color: #4676fa;
                 font-weight: 500;
+                color: #4676fa;
 
                 .dot-animation {
                     display: inline-flex;
@@ -350,16 +350,16 @@ $transition-default: all 0.3s ease;
 
                 .action-button {
                     display: flex;
-                    align-items: center;
                     gap: 4px;
+                    align-items: center;
                     padding: 4px 8px;
                     font-size: 12px;
                     color: #666;
+                    cursor: pointer;
                     background-color: #f5f5f5;
                     border: 1px solid #e0e0e0;
                     border-radius: 4px;
                     transition: all 0.2s;
-                    cursor: pointer;
 
                     &:hover {
                         color: #4776e6;
@@ -377,34 +377,84 @@ $transition-default: all 0.3s ease;
         bottom: 0;
         z-index: 20;
         display: flex;
-        align-items: flex-end;
         gap: 8px;
+        align-items: flex-end;
         padding: 12px 16px;
         margin-top: auto;
-        border-radius: 12px;
-        background-color: #fff;
-        border: 1px solid rgba(229, 231, 235, 0.7);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 2px 5px rgba(0, 0, 0, 0.03);
-        transition: all 0.2s ease;
         overflow: hidden;
+        background-color: #fff;
+        border: 1px solid rgb(229 231 235 / 70%);
+        border-radius: 12px;
+        box-shadow: 0 1px 3px rgb(0 0 0 / 5%), 0 2px 5px rgb(0 0 0 / 3%);
+        transition: all 0.2s ease;
 
-        .message-input {
+        .input-wrapper {
+            position: relative;
             flex-grow: 1;
-            min-height: 40px;
-            padding: 12px 16px;
-            font-size: 14px;
-            line-height: 1.6;
-            border: none;
-            border-radius: 12px;
-            resize: none;
-            box-shadow: none;
+            
+            .message-input {
+                width: 100%;
+                min-height: 40px;
+                padding: 12px 16px;
+                font-size: 14px;
+                line-height: 1.6;
+                resize: none;
+                border: none;
+                border-radius: 12px;
+                box-shadow: none;
+            }
+            
+            .prompt-suggestions {
+                position: absolute;
+                bottom: 100%;
+                left: 0;
+                z-index: 30;
+                width: 100%;
+                max-height: 300px;
+                margin-bottom: 8px;
+                overflow-y: auto;
+                background-color: #fff;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
+                
+                .prompt-item {
+                    padding: 10px 12px;
+                    cursor: pointer;
+                    transition: background-color 0.2s;
+                    
+                    &:hover {
+                        background-color: #f5f7fa;
+                    }
+                    
+                    &.selected {
+                        background-color: #f0f5ff;
+                        border-left: 3px solid #4776e6;
+                    }
+                    
+                    .prompt-name {
+                        margin-bottom: 4px;
+                        font-size: 14px;
+                        font-weight: 600;
+                        color: #333;
+                    }
+                    
+                    .prompt-preview {
+                        overflow: hidden;
+                        font-size: 12px;
+                        color: #666;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+                }
+            }
         }
 
         .send-button {
             display: flex;
             align-items: center;
             justify-content: center;
-            width: 40px;
+            width: 60px;
             height: 40px;
             margin: 6px;
             background-color: #4776e6;
@@ -422,6 +472,57 @@ $transition-default: all 0.3s ease;
             }
         }
     }
+
+    // Prompt suggestions overlay
+    .prompt-suggestions-overlay {
+        position: fixed;
+        bottom: 90px;  // Position above the input area
+        left: 50%;
+        z-index: 9999;  // Very high z-index to ensure it's on top of everything
+        width: 80%;  // Take up 80% of the container width
+        max-width: 500px;
+        transform: translateX(-50%);
+        
+        .prompt-suggestions {
+            width: 100%;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgb(0 0 0 / 15%);
+            
+            .prompt-item {
+                padding: 10px 16px;
+                cursor: pointer;
+                transition: background-color 0.2s;
+                
+                &:hover {
+                    background-color: #f5f7fa;
+                }
+                
+                &.selected {
+                    background-color: #f0f5ff;
+                    border-left: 3px solid #4776e6;
+                }
+                
+                .prompt-name {
+                    margin-bottom: 4px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: #333;
+                }
+                
+                .prompt-preview {
+                    overflow: hidden;
+                    font-size: 12px;
+                    color: #666;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+            }
+        }
+    }
 }
 
 // Animations
@@ -430,6 +531,7 @@ $transition-default: all 0.3s ease;
         opacity: 0;
         transform: translateY(10px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -441,6 +543,7 @@ $transition-default: all 0.3s ease;
         opacity: 0.2;
         transform: scale(0.8);
     }
+
     50% {
         opacity: 1;
         transform: scale(1.2);
@@ -450,25 +553,26 @@ $transition-default: all 0.3s ease;
 @keyframes gentle-pulse {
     0%,
     100% {
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 1px 3px rgb(0 0 0 / 10%), 0 1px 2px rgb(0 0 0 / 6%);
         opacity: 0.95;
     }
+
     50% {
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 10%), 0 2px 4px -1px rgb(0 0 0 / 6%);
         opacity: 1;
     }
 }
 
 // Streaming content styling
 .markdown-content.streaming p:last-child::after {
-    content: '';
     display: inline-block;
     width: 2px;
     height: 1em;
-    background-color: #4776e6;
     margin-left: 2px;
-    animation: cursor-blink 0.8s infinite;
     vertical-align: middle;
+    content: '';
+    background-color: #4776e6;
+    animation: cursor-blink 0.8s infinite;
 }
 
 @keyframes cursor-blink {
@@ -476,6 +580,7 @@ $transition-default: all 0.3s ease;
     100% {
         opacity: 0;
     }
+
     50% {
         opacity: 1;
     }
@@ -484,34 +589,10 @@ $transition-default: all 0.3s ease;
 // Animations and markdown styles
 .markdown-content,
 .message-content {
-    font-size: 14px;
-    line-height: 1.6;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
         'Noto Sans', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-}
-
-.code-copy-button {
-    position: absolute;
-    top: 8px;
-    right: 8px;
-    z-index: 10;
-
-    .copy-button {
-        background: rgba(255, 255, 255, 0.9);
-        border: 1px solid #e2e8f0;
-        border-radius: 4px;
-        padding: 3px 10px;
-        font-size: 12px;
-        cursor: pointer;
-        color: #4776e6;
-        transition: all 0.2s ease;
-
-        &:hover {
-            background: #fff;
-            border-color: #4776e6;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-        }
-    }
+    font-size: 14px;
+    line-height: 1.6;
 }
 
 .message-ai {
@@ -527,25 +608,25 @@ $transition-default: all 0.3s ease;
 
 // 消息动作样式
 .message-actions {
-    margin-top: 8px;
     display: flex;
     gap: 8px;
     justify-content: flex-end;
+    margin-top: 8px;
 
     .action-button {
         display: flex;
         align-items: center;
-        background: rgba(0, 0, 0, 0.04);
-        color: #555;
-        border: none;
-        border-radius: 6px;
         padding: 3px 10px;
         font-size: 13px;
+        color: #555;
         cursor: pointer;
+        background: rgb(0 0 0 / 4%);
+        border: none;
+        border-radius: 6px;
         transition: all 0.2s;
 
         &:hover {
-            background: rgba(0, 0, 0, 0.06);
+            background: rgb(0 0 0 / 6%);
         }
 
         .anticon {
@@ -557,18 +638,18 @@ $transition-default: all 0.3s ease;
 
 // Add a specific class for when the ChatInterface is inside the ChatWindow
 .chat-content-container .chat-interface-container {
+    padding: 0;
     // Override background to be transparent
     background-color: transparent;
     background-image: none;
-    padding: 0;
 
     // Override scrollbar settings when inside the chat window
     .messages-container {
         max-height: none !important;
-        margin-bottom: 0;
         padding-bottom: 20px; /* Add padding to prevent content from being hidden behind input */
-        border-radius: 0;
+        margin-bottom: 0;
         overflow-y: hidden;
+        border-radius: 0;
     }
 
     .messages-wrapper {
@@ -584,11 +665,11 @@ $transition-default: all 0.3s ease;
         z-index: 20;
         margin-top: auto;
         background-color: #fff;
-        border-radius: 12px;
-        box-shadow: 0 -2px 10px rgb(0 0 0 / 5%);
         border-top: 1px solid rgb(229 231 235 / 70%);
         border-right: none;
-        border-left: none;
         border-bottom: none;
+        border-left: none;
+        border-radius: 12px;
+        box-shadow: 0 -2px 10px rgb(0 0 0 / 5%);
     }
 }

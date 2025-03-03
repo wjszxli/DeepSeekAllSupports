@@ -7,7 +7,7 @@ export const zhCN = {
     copy: '复制',
     regenerate: '重新生成',
     settings: '设置',
-    close: '关闭',
+    stop: '停止',
 
     // App settings
     appTitle: 'AI 工具',
@@ -38,7 +38,6 @@ export const zhCN = {
     thinking: 'AI 正在思考...',
     you: '你',
     assistant: 'AI 助手',
-    includeWebpage: '在问题中包含网页内容',
     askWebpage: '询问关于这个网页...',
     sendMessage: '发送消息...',
     interfaceSettings: '界面设置',
@@ -67,4 +66,16 @@ export const zhCN = {
     languageKo: '한국어',
     languageChanged: '语言已成功更改',
     includeWebpageContent: '在问题中包含网页内容',
+    
+    // Slash command prompts
+    translate: '翻译',
+    translatePrompt: '将以下文本翻译成中文：',
+    summarize: '总结',
+    summarizePrompt: '简洁地总结以下文本：',
+    explain: '解释',
+    explainPrompt: '用简单的术语解释以下概念：',
+    codeReview: '代码审查',
+    codeReviewPrompt: '审查以下代码并提出改进建议：',
+    rewrite: '重写',
+    rewritePrompt: '重写以下文本，使其更专业：',
 };

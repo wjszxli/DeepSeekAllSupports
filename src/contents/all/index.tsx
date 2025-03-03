@@ -8,6 +8,7 @@ import { i18n, setLocale } from '@/services/i18n';
 
 import ChatWindow from './components/ChatWindow';
 import './styles/animations.css';
+import './styles/highlight.css';
 
 // 监听来自扩展程序的消息
 chrome.runtime.onMessage.addListener((message) => {
