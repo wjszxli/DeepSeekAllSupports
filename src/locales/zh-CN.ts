@@ -85,4 +85,8 @@ export const zhCN = {
     searchingWeb: '正在搜索网络信息...',
     searchComplete: '搜索完成，正在用AI处理结果...',
     noSearchResults: '未找到搜索结果，仅使用AI知识回答...',
+    webSearchResultsTips1: '下面是一些来自网络的最新信息，可能有助于回答这个问题',
+    webSearchResultsTips2: '根据这些信息和你的知识，请回答这个问题',
+    Source: '来源',
+    close: '关闭',
 };

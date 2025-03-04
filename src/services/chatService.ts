@@ -11,7 +11,7 @@ import storage from '@/utils/storage';
  */
 export async function sendMessage(
     message: string,
-    onStreamUpdate?: (chunk: string) => void
+    onStreamUpdate?: (chunk: string) => void,
 ): Promise<string> {
     try {
         console.log('sendMessage called with:', message);
@@ -21,7 +21,6 @@ export async function sendMessage(
 
         let response = '';
 
-        // Create a new abort controller for this request
         // @ts-ignore
         window.currentAbortController = new AbortController();
         // @ts-ignore
@@ -44,7 +43,7 @@ export async function sendMessage(
                     console.log('Adding direct text to response:', data);
                     response += data;
                     if (onStreamUpdate) onStreamUpdate(data);
-                } 
+                }
                 // Process streaming data
                 else if (!done) {
                     try {
@@ -67,17 +66,17 @@ export async function sendMessage(
                 // Handle completion
                 if (done) {
                     console.log('Stream complete. Final response:', response);
-                    
+
                     // Update chat history with the completed response
                     const updatedMessages = [
                         ...sendMessage,
                         { role: 'assistant', content: response },
                     ];
                     await storage.set('chatHistory', updatedMessages);
-                    
+
                     // @ts-ignore
                     window.currentAbortController = null;
-                    
+
                     resolve(response);
                 }
             }).catch((error) => {
@@ -104,7 +103,7 @@ export async function sendMessage(
 export async function sendMessageWithWebpageContext(
     userMessage: string,
     includeWebpage = true,
-    onStreamUpdate?: (chunk: string) => void
+    onStreamUpdate?: (chunk: string) => void,
 ): Promise<string> {
     try {
         console.log('sendMessageWithWebpageContext called with:', userMessage);
@@ -114,7 +113,7 @@ export async function sendMessageWithWebpageContext(
             console.log('Extracting webpage content...');
             const webpageContent = await extractWebpageContent();
             console.log('Extracted webpage content length:', webpageContent.length);
-            
+
             // Format the message with webpage context
             contextMessage = `The following is the content of the webpage I'm currently viewing:
 

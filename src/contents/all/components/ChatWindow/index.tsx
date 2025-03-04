@@ -31,6 +31,15 @@ const ProviderAlert = memo(({ message }: { message: string }) => (
     </div>
 ));
 
+const HighZIndexTooltip: React.FC<React.ComponentProps<typeof Tooltip>> = ({
+    children,
+    ...props
+}) => (
+    <Tooltip {...props} overlayStyle={{ zIndex: 10001 }}>
+        {children}
+    </Tooltip>
+);
+
 const HeaderActions = memo(
     ({
         isPinned,
@@ -46,7 +55,7 @@ const HeaderActions = memo(
         closeTooltip: string;
     }) => (
         <div className="chat-window-actions">
-            <Tooltip title={pinTooltip} placement="bottom">
+            <HighZIndexTooltip title={pinTooltip} placement="bottom">
                 <div
                     className="header-action-button pin-button"
                     onClick={togglePin}
@@ -60,8 +69,8 @@ const HeaderActions = memo(
                         <PushpinOutlined style={{ fontSize: 16 }} />
                     )}
                 </div>
-            </Tooltip>
-            <Tooltip title={closeTooltip} placement="bottom">
+            </HighZIndexTooltip>
+            <HighZIndexTooltip title={closeTooltip} placement="bottom">
                 <div
                     className="header-action-button close-button"
                     onClick={onCancel}
@@ -71,7 +80,7 @@ const HeaderActions = memo(
                 >
                     <CloseOutlined style={{ fontSize: 16 }} />
                 </div>
-            </Tooltip>
+            </HighZIndexTooltip>
         </div>
     ),
 );
@@ -81,7 +90,9 @@ const windowReducer = (state: WindowState, action: ActionType): WindowState => {
         case 'SET_POSITION':
             return { ...state, position: action.payload };
         case 'SET_SIZE':
-            localStorage.setItem('chatWindowSize', JSON.stringify(action.payload));
+            storage.setChatBoxSize(action.payload).catch((error) => {
+                console.error('Failed to save chat box size:', error);
+            });
             return { ...state, size: action.payload };
         case 'SET_VISIBILITY':
             return { ...state, isVisible: action.payload };
@@ -99,50 +110,65 @@ const ChatWindow = ({ x, y, text }: { x: number; y: number; text?: string }) => 
     const dragStartRef = useRef({ x: 0, y: 0 });
     const { t } = useLanguage();
 
-    // Memoize the initial size calculation
-    const initialSize = useMemo(() => {
-        try {
-            const savedSize = localStorage.getItem('chatWindowSize');
-            return savedSize ? JSON.parse(savedSize) : { width: 500, height: 600 };
-        } catch (error) {
-            console.error('Error reading saved size:', error);
-            return { width: 500, height: 600 };
-        }
-    }, []);
-
     const [state, dispatch] = useReducer(windowReducer, {
         position: { x, y },
-        size: initialSize,
+        size: { width: 500, height: 600 },
         isVisible: false,
         isPinned: false,
         provider: null,
     });
 
-    const { position, size, isVisible, isPinned, provider } = state;
+    useEffect(() => {
+        const loadSavedSize = async () => {
+            try {
+                const savedSize = await storage.getChatBoxSize();
+                dispatch({ type: 'SET_SIZE', payload: savedSize });
+            } catch (error) {
+                console.error('Error reading saved size:', error);
+            }
+        };
 
-    // Memoize tooltip texts
-    const pinTooltip = useMemo(() => (isPinned ? t('unpinWindow') : t('pinWindow')), [isPinned, t]);
-    const closeTooltip = useMemo(() => t('close'), [t]);
-    const assistantLabel = useMemo(() => t('assistant'), [t]);
-    const selectProviderText = useMemo(() => t('selectProviderFirst'), [t]);
+        loadSavedSize();
+    }, []);
 
     const initData = useCallback(async () => {
         try {
             await storage.remove('chatHistory');
-            const config = await storage.getConfig();
 
+            setTimeout(() => {
+                dispatch({ type: 'SET_VISIBILITY', payload: true });
+            }, 50);
+
+            const config = await storage.getConfig();
             dispatch({
                 type: 'INITIALIZE',
                 payload: { provider: config.selectedProvider || null },
             });
-
-            dispatch({ type: 'SET_VISIBILITY', payload: true });
         } catch (error) {
             console.error('Error initializing chat window:', error);
         }
     }, []);
 
-    const onCancel = useCallback(() => {
+    useEffect(() => {
+        initData();
+    }, [initData]);
+
+    const { position, size, isVisible, isPinned, provider } = state;
+
+    const pinTooltip = useMemo(() => (isPinned ? t('unpinWindow') : t('pinWindow')), [isPinned, t]);
+    const closeTooltip = useMemo(() => t('close'), [t]);
+    const assistantLabel = useMemo(() => t('assistant'), [t]);
+    const selectProviderText = useMemo(() => t('selectProviderFirst'), [t]);
+
+    const onCancel = useCallback(async () => {
+        await storage.remove('chatHistory');
+        // @ts-ignore
+        if (window.currentAbortController) {
+            // @ts-ignore
+            window.currentAbortController.abort();
+            // @ts-expect-error
+            window.currentAbortController = null;
+        }
         dispatch({ type: 'SET_VISIBILITY', payload: false });
     }, []);
 
@@ -185,30 +211,34 @@ const ChatWindow = ({ x, y, text }: { x: number; y: number; text?: string }) => 
         [position, isPinned],
     );
 
-    const handleMouseMove = useThrottledCallback((moveEvent: MouseEvent) => {
-        moveEvent.preventDefault();
+    const handleMouseMove = useThrottledCallback(
+        (moveEvent: MouseEvent) => {
+            moveEvent.preventDefault();
 
-        const chatBoxWidth = chatBoxRef.current?.offsetWidth || 0;
-        const chatBoxHeight = chatBoxRef.current?.offsetHeight || 0;
+            const chatBoxWidth = chatBoxRef.current?.offsetWidth || 0;
+            const chatBoxHeight = chatBoxRef.current?.offsetHeight || 0;
 
-        const newX = Math.max(
-            0,
-            Math.min(
-                moveEvent.clientX - dragStartRef.current.x,
-                window.innerWidth - chatBoxWidth,
-            ),
-        );
+            const newX = Math.max(
+                0,
+                Math.min(
+                    moveEvent.clientX - dragStartRef.current.x,
+                    window.innerWidth - chatBoxWidth,
+                ),
+            );
 
-        const newY = Math.max(
-            0,
-            Math.min(
-                moveEvent.clientY - dragStartRef.current.y,
-                window.innerHeight - chatBoxHeight,
-            ),
-        );
+            const newY = Math.max(
+                0,
+                Math.min(
+                    moveEvent.clientY - dragStartRef.current.y,
+                    window.innerHeight - chatBoxHeight,
+                ),
+            );
 
-        dispatch({ type: 'SET_POSITION', payload: { x: newX, y: newY } });
-    }, 16, []);
+            dispatch({ type: 'SET_POSITION', payload: { x: newX, y: newY } });
+        },
+        16,
+        [],
+    );
 
     const handleMouseUp = useCallback(() => {
         if (chatBoxRef.current) {
@@ -224,7 +254,6 @@ const ChatWindow = ({ x, y, text }: { x: number; y: number; text?: string }) => 
             e.preventDefault();
             e.stopPropagation();
 
-            // Add a class to indicate resizing is happening
             if (chatBoxRef.current) {
                 chatBoxRef.current.classList.add('resizing');
             }
@@ -244,7 +273,6 @@ const ChatWindow = ({ x, y, text }: { x: number; y: number; text?: string }) => 
             };
 
             const handleResizeUp = () => {
-                // Remove resizing class
                 if (chatBoxRef.current) {
                     chatBoxRef.current.classList.remove('resizing');
                 }
@@ -282,10 +310,7 @@ const ChatWindow = ({ x, y, text }: { x: number; y: number; text?: string }) => 
         }
     });
 
-    // Set up event listeners
     useEffect(() => {
-        initData();
-
         window.addEventListener('keydown', handleKeyDown);
         window.addEventListener('resize', handleMaintainPosition);
         window.addEventListener('maintainChatPosition', handleMaintainPosition);
@@ -295,9 +320,8 @@ const ChatWindow = ({ x, y, text }: { x: number; y: number; text?: string }) => 
             window.removeEventListener('resize', handleMaintainPosition);
             window.removeEventListener('maintainChatPosition', handleMaintainPosition);
         };
-    }, [initData, handleKeyDown, handleMaintainPosition]);
+    }, [handleKeyDown, handleMaintainPosition]);
 
-    // Memoize the chat content to prevent unnecessary re-renders
     const chatContent = useMemo(() => {
         if (!provider) {
             return <ProviderAlert message={selectProviderText} />;
@@ -309,7 +333,6 @@ const ChatWindow = ({ x, y, text }: { x: number; y: number; text?: string }) => 
         );
     }, [provider, text, selectProviderText]);
 
-    // Memoize the style object
     const chatBoxStyle = useMemo(
         () => ({
             left: `${position.x}px`,
@@ -336,6 +359,7 @@ const ChatWindow = ({ x, y, text }: { x: number; y: number; text?: string }) => 
                 <Typography.Text strong style={{ fontSize: '14px', color: '#2c3e50' }}>
                     {assistantLabel}
                 </Typography.Text>
+
                 <HeaderActions
                     isPinned={isPinned}
                     togglePin={togglePin}

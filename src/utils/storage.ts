@@ -104,7 +104,6 @@ const storage = {
     setLocale: async (locale: string): Promise<void> => {
         try {
             await chrome.storage.local.set({ locale });
-            // Dispatch a custom event to notify other components about locale change
             window.dispatchEvent(new CustomEvent('localeChange', { detail: { locale } }));
         } catch (error) {
             console.error('Failed to set locale:', error);

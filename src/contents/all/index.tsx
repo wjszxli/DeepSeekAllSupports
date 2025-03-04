@@ -4,24 +4,58 @@ import { removeChatBox, removeChatButton } from '@/utils';
 import { CHAT_BOX_ID, CHAT_BUTTON_ID } from '@/utils/constant';
 import storage from '@/utils/storage';
 import { LanguageProvider } from '@/contexts/LanguageContext';
-import { i18n, setLocale } from '@/services/i18n';
+import { setLocale } from '@/services/i18n';
+import type { LocaleType } from '@/locales';
 
 import ChatWindow from './components/ChatWindow';
 import './styles/animations.css';
 import './styles/highlight.css';
 
-// 监听来自扩展程序的消息
-chrome.runtime.onMessage.addListener((message) => {
-    if (message.action === 'languageChanged' && message.locale) {
-        // 更新语言设置
-        setLocale(message.locale).catch(console.error);
-        
-        // 触发UI更新
-        window.dispatchEvent(new CustomEvent('translationUpdate', { 
-            detail: { locale: message.locale } 
-        }));
+// 初始化语言设置
+(async () => {
+    try {
+        const savedLocale = await storage.getLocale();
+        if (
+            savedLocale &&
+            ['en', 'zh-CN', 'zh-TW', 'ja', 'ko', 'ru', 'es', 'fr', 'de'].includes(savedLocale)
+        ) {
+            await setLocale(savedLocale as LocaleType);
+            console.log('Initialized locale from storage:', savedLocale);
+        }
+    } catch (error) {
+        console.error('Failed to initialize locale:', error);
     }
-    return true;
+})();
+
+// 监听来自扩展程序的消息
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+    if (message.action === 'localeChanged' && message.locale) {
+        // 更新语言设置
+        setLocale(message.locale)
+            .then(() => {
+                // 触发UI更新
+                window.dispatchEvent(
+                    new CustomEvent('translationUpdate', {
+                        detail: { locale: message.locale },
+                    }),
+                );
+                // Send response indicating success
+                sendResponse({ success: true });
+            })
+            .catch((error: unknown) => {
+                console.error('Error setting locale:', error);
+                sendResponse({
+                    success: false,
+                    error: error instanceof Error ? error.message : 'Unknown error',
+                });
+            });
+
+        // 返回true表示我们将发送一个异步响应
+        return true;
+    }
+
+    // 返回false（或什么都不返回）表示我们不处理的消息
+    return false;
 });
 
 // 监听选中文字
@@ -132,17 +166,10 @@ document.addEventListener('keydown', async (event) => {
     }
 });
 
-// Listen for extension messages
-chrome.runtime.onMessage.addListener((message) => {
-    if (message.action === 'localeChanged' && message.locale) {
-        // Update the i18n service locale
-        i18n.setLocale(message.locale);
-    }
-
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     if (message.action === 'openChatWindow') {
         const { selectedText } = message;
 
-        // Calculate center position
         const windowWidth = window.innerWidth;
         const windowHeight = window.innerHeight;
         const chatWidth = 500;
@@ -151,6 +178,16 @@ chrome.runtime.onMessage.addListener((message) => {
         const centerX = (windowWidth - chatWidth) / 2;
         const centerY = (windowHeight - chatHeight) / 2;
 
-        injectChatBox(centerX, centerY, selectedText);
+        try {
+            injectChatBox(centerX, centerY, selectedText);
+            sendResponse({ success: true });
+        } catch (error: unknown) {
+            console.error('Error opening chat window:', error);
+            sendResponse({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error',
+            });
+        }
     }
+    return false;
 });

@@ -7,6 +7,8 @@ $border-color: rgb(229 231 235 / 70%);
 $shadow-light: 0 10px 30px rgb(0 0 0 / 8%), 0 6px 12px rgb(0 0 0 / 5%);
 $border-radius: 12px;
 $transition-default: all 0.3s ease;
+$thinking-bg-color: #f5f7f9;
+$thinking-border-color: #e1e8ed;
 
 .chat-interface-container {
     box-sizing: border-box;
@@ -134,26 +136,26 @@ $transition-default: all 0.3s ease;
         width: 100%;
         overflow-x: hidden;
         overflow-y: auto;
-        
+
         // Firefox scrollbar
         scrollbar-width: thin;
         scrollbar-color: #888 #f1f1f1;
-        
+
         // Webkit scrollbar styles
         &::-webkit-scrollbar {
             width: 6px;
         }
-        
+
         &::-webkit-scrollbar-track {
             background: #f1f1f1;
             border-radius: 10px;
         }
-        
+
         &::-webkit-scrollbar-thumb {
             background: #888;
             border-radius: 10px;
         }
-        
+
         &::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
@@ -251,7 +253,7 @@ $transition-default: all 0.3s ease;
                 color: #fff;
                 background: linear-gradient(135deg, #4776e6 0%, #8e54e9 100%);
                 box-shadow: 0 4px 12px rgb(78 88 222 / 15%);
-                
+
                 .sender-name {
                     color: rgb(255 255 255 / 90%);
                     text-align: right;
@@ -264,29 +266,79 @@ $transition-default: all 0.3s ease;
                 background-color: #fff;
                 border: 1px solid #f0f0f0;
                 box-shadow: 0 2px 4px rgb(0 0 0 / 4%);
-                
+
                 .sender-name {
                     color: #888;
                 }
 
+                // 思考容器的样式
+                .thinking-container {
+                    padding: 10px;
+                    margin-bottom: 10px;
+                    background-color: #f8f9fa;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 6px;
+
+                    .thinking-header {
+                        padding-bottom: 4px;
+                        margin-bottom: 6px;
+                        border-bottom: 1px solid #edf2f7;
+
+                        .thinking-label {
+                            font-size: 12px;
+                            font-weight: 500;
+                            color: #718096;
+                            letter-spacing: 0.3px;
+                        }
+                    }
+
+                    .thinking-content {
+                        font-size: 14px;
+                        line-height: 1.5;
+                        color: #4a5568;
+                        white-space: pre-wrap;
+
+                        p:last-child {
+                            margin-bottom: 0;
+                        }
+
+                        pre,
+                        code {
+                            background-color: #edf2f7;
+                            border-radius: 3px;
+                        }
+
+                        pre {
+                            padding: 8px;
+                            overflow-x: auto;
+                        }
+
+                        code {
+                            padding: 2px 3px;
+                            font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo,
+                                monospace;
+                            font-size: 12px;
+                        }
+                    }
+                }
+
                 &.thinking {
-                    background-color: #f0f5ff;
-                    border-left: 3px solid #4676fa;
-                    animation: gentle-pulse 2s infinite ease-in-out;
+                    background-color: #f8f9fa;
+                    border-left: 2px solid #cbd5e0;
 
                     .thinking-indicator {
                         display: flex;
                         align-items: center;
                         font-weight: 500;
-                        color: #4676fa;
+                        color: #718096;
                         opacity: 1;
                     }
                 }
             }
 
             &.streaming-message {
-                background-color: #f0f5ff !important;
-                border-left: 3px solid #4676fa !important;
+                background-color: #f8f9fa !important;
+                border-left: 2px solid #718096 !important;
             }
 
             &.system {
@@ -294,7 +346,7 @@ $transition-default: all 0.3s ease;
                 color: #333;
                 background-color: #fff2e8;
                 box-shadow: 0 2px 4px rgb(0 0 0 / 4%);
-                
+
                 .sender-name {
                     color: #d48806;
                 }
@@ -305,7 +357,7 @@ $transition-default: all 0.3s ease;
                 align-items: center;
                 justify-content: space-between;
                 margin-bottom: 8px;
-                
+
                 .sender-name {
                     font-size: 12px;
                     font-weight: 500;
@@ -391,7 +443,7 @@ $transition-default: all 0.3s ease;
         .input-wrapper {
             position: relative;
             flex-grow: 1;
-            
+
             .message-input {
                 width: 100%;
                 min-height: 40px;
@@ -403,7 +455,7 @@ $transition-default: all 0.3s ease;
                 border-radius: 12px;
                 box-shadow: none;
             }
-            
+
             .prompt-suggestions {
                 position: absolute;
                 bottom: 100%;
@@ -417,28 +469,28 @@ $transition-default: all 0.3s ease;
                 border: 1px solid #e0e0e0;
                 border-radius: 8px;
                 box-shadow: 0 4px 12px rgb(0 0 0 / 10%);
-                
+
                 .prompt-item {
                     padding: 10px 12px;
                     cursor: pointer;
                     transition: background-color 0.2s;
-                    
+
                     &:hover {
                         background-color: #f5f7fa;
                     }
-                    
+
                     &.selected {
                         background-color: #f0f5ff;
                         border-left: 3px solid #4776e6;
                     }
-                    
+
                     .prompt-name {
                         margin-bottom: 4px;
                         font-size: 14px;
                         font-weight: 600;
                         color: #333;
                     }
-                    
+
                     .prompt-preview {
                         overflow: hidden;
                         font-size: 12px;
@@ -476,13 +528,13 @@ $transition-default: all 0.3s ease;
     // Prompt suggestions overlay
     .prompt-suggestions-overlay {
         position: fixed;
-        bottom: 90px;  // Position above the input area
+        bottom: 90px; // Position above the input area
         left: 50%;
-        z-index: 9999;  // Very high z-index to ensure it's on top of everything
-        width: 80%;  // Take up 80% of the container width
+        z-index: 9999; // Very high z-index to ensure it's on top of everything
+        width: 80%; // Take up 80% of the container width
         max-width: 500px;
         transform: translateX(-50%);
-        
+
         .prompt-suggestions {
             width: 100%;
             max-height: 300px;
@@ -491,28 +543,28 @@ $transition-default: all 0.3s ease;
             border: 1px solid #e0e0e0;
             border-radius: 12px;
             box-shadow: 0 4px 20px rgb(0 0 0 / 15%);
-            
+
             .prompt-item {
                 padding: 10px 16px;
                 cursor: pointer;
                 transition: background-color 0.2s;
-                
+
                 &:hover {
                     background-color: #f5f7fa;
                 }
-                
+
                 &.selected {
                     background-color: #f0f5ff;
                     border-left: 3px solid #4776e6;
                 }
-                
+
                 .prompt-name {
                     margin-bottom: 4px;
                     font-size: 14px;
                     font-weight: 600;
                     color: #333;
                 }
-                
+
                 .prompt-preview {
                     overflow: hidden;
                     font-size: 12px;
@@ -539,7 +591,8 @@ $transition-default: all 0.3s ease;
 }
 
 @keyframes pulse {
-    0%, 100% {
+    0%,
+    100% {
         opacity: 0.2;
         transform: scale(0.8);
     }

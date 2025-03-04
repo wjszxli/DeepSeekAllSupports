@@ -39,6 +39,14 @@ export interface OllamaResponse {
     done: boolean;
 }
 
+// 搜索结果接口
+export interface SearchResult {
+    title: string;
+    link: string;
+    snippet: string;
+    thinking?: string; // 添加思考部分，可选
+}
+
 export interface ChatParams {
     message: string;
     provider: string;
@@ -47,4 +55,11 @@ export interface ChatParams {
     onMessage: (content: string) => void;
     onError: (error: any) => void;
     onFinish: (result: string) => void;
+}
+
+
+declare global {
+    interface Window {
+        currentAbortController?: AbortController;
+    }
 }

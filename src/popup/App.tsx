@@ -38,6 +38,25 @@ const App: React.FC = () => {
     const [models, setModels] = useState<Array<{ label: string; value: string }>>([]);
     const [currentLocale, setCurrentLocale] = useState<LocaleType>(getLocale());
 
+    useEffect(() => {
+        const init = async () => {
+            try {
+                const savedLocale = await storage.getLocale();
+                if (savedLocale && Object.keys(locales).includes(savedLocale)) {
+                    await setLocale(savedLocale as LocaleType);
+                    setCurrentLocale(savedLocale as LocaleType);
+                    console.log('Initialized locale from storage:', savedLocale);
+                }
+            } catch (error) {
+                console.error('Failed to initialize locale:', error);
+            }
+
+            await initData();
+        };
+
+        init();
+    }, []);
+
     const initData = async () => {
         const { selectedProvider, selectedModel } = await storage.getConfig();
 
@@ -76,10 +95,6 @@ const App: React.FC = () => {
             isIcon: isChatBoxIcon !== undefined ? isChatBoxIcon : true,
         });
     };
-
-    useEffect(() => {
-        initData();
-    }, []);
 
     useEffect(() => {
         const handleLocaleChange = (event: CustomEvent<{ locale: LocaleType }>) => {
@@ -197,7 +212,7 @@ const App: React.FC = () => {
                     tabs.forEach((tab) => {
                         if (tab.id) {
                             chrome.tabs
-                                .sendMessage(tab.id, { action: 'languageChanged', locale })
+                                .sendMessage(tab.id, { action: 'localeChanged', locale })
                                 .catch(() => {});
                         }
                     });

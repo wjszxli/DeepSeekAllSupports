@@ -210,3 +210,62 @@ export const handleMessage = (message: string, sender: { tab: { id: number } }) 
         }
     }
 };
+
+// 解析模型响应中的思考和回复部分
+export const parseModelResponse = (content: string): { thinking: string; response: string } => {
+    // 检查是否为JSON格式的响应，包含reasoning_content字段
+    try {
+        // 尝试解析JSON
+        if (content.trim().startsWith('{') && content.trim().endsWith('}')) {
+            const jsonData = JSON.parse(content);
+            if (jsonData.reasoning_content && typeof jsonData.content === 'string') {
+                // 返回推理内容和实际响应
+                return {
+                    thinking: jsonData.reasoning_content.trim(),
+                    response: jsonData.content.trim(),
+                };
+            }
+        }
+    } catch (e) {
+        // 不是合法的JSON或者没有预期字段，继续处理为<think>标签
+    }
+
+    // 处理使用<think>标签的情况
+    // 使用正则表达式匹配所有 <think>...</think> 标签
+    const thinkRegex = /<think>([\s\S]*?)<\/think>/g;
+    let match;
+    let thinking = '';
+
+    // 创建内容的副本，用于移除思考部分
+    let processedContent = content;
+
+    // 收集所有的思考内容
+    const matches = [];
+    while ((match = thinkRegex.exec(content)) !== null) {
+        matches.push({
+            fullMatch: match[0],
+            thinkingContent: match[1].trim(),
+            index: match.index,
+        });
+    }
+
+    // 按照索引排序，确保按正确的顺序处理
+    matches.sort((a, b) => a.index - b.index);
+
+    // 收集思考内容并从响应中移除
+    for (const match of matches) {
+        // 如果已经有思考内容，添加分隔符
+        if (thinking) {
+            thinking += '\n\n';
+        }
+        thinking += match.thinkingContent;
+
+        // 从响应中移除思考部分
+        processedContent = processedContent.replace(match.fullMatch, '');
+    }
+
+    // 清理响应中可能存在的多余空行和前后空白
+    const response = processedContent.trim().replace(/\n{3,}/g, '\n\n');
+
+    return { thinking, response };
+};

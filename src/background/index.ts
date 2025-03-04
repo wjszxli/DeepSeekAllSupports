@@ -1,16 +1,161 @@
-import type { OllamaResponse } from '@/typings';
+import type { OllamaResponse, SearchResult } from '@/typings';
 import { fetchData, handleMessage, isLocalhost } from '@/utils';
 import { MODIFY_HEADERS_RULE_ID, URL_MAP } from '@/utils/constant';
 import storage from '@/utils/storage';
+import { load } from 'cheerio';
 
-chrome.runtime.onInstalled.addListener((details) => {
-    if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
-        // 打开说明页面
-        chrome.tabs.create({
-            url: chrome.runtime.getURL('/install.html'),
+// 专门用于网页搜索的函数
+async function searchWeb(query: string): Promise<SearchResult[]> {
+    try {
+        console.log('执行百度搜索:', query);
+
+        // 使用百度搜索
+        const searchUrl = `https://www.baidu.com/s?wd=${encodeURIComponent(query)}`;
+
+        const response = await fetch(searchUrl, {
+            method: 'GET',
+            headers: {
+                'Accept':
+                    'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            },
         });
+
+        if (!response.ok) {
+            throw new Error(`百度搜索请求失败，状态码: ${response.status}`);
+        }
+
+        const html = await response.text();
+
+        // 使用cheerio解析百度搜索结果HTML
+        const $ = load(html);
+        const results: SearchResult[] = [];
+
+        // 百度搜索结果通常在带有特定class的div中
+        // 注意：百度可能会更改其HTML结构，以下选择器可能需要根据实际情况调整
+        $('.result, .c-container').each((i, element) => {
+            if (i >= 5) return false; // 只获取前5个结果
+
+            const titleElement = $(element).find('.t, .c-title');
+            const title = titleElement.text().trim();
+
+            // 获取链接（百度使用重定向链接）
+            let link = titleElement.find('a').attr('href') || '';
+
+            // 获取摘要
+            const snippet = $(element).find('.c-abstract, .content-abstract').text().trim();
+
+            // Only add result when title and link exist
+            if (title && link) {
+                results.push({
+                    title,
+                    link,
+                    snippet,
+                });
+            }
+            
+            // Return true to continue iteration
+            return true;
+        });
+
+        if (results.length === 0) {
+            console.log('未能从百度搜索结果中提取数据，可能选择器需要更新');
+        }
+
+        return results;
+    } catch (error: any) {
+        console.error('百度搜索失败:', error);
+        // 搜索失败时返回空数组
+        return [];
     }
-});
+}
+
+// 专门用于获取网页内容的函数
+async function fetchWebPage(url: string): Promise<string> {
+    try {
+        console.log('获取网页内容:', url);
+
+        // 处理百度重定向链接
+        let targetUrl = url;
+
+        // 如果是百度重定向链接，需要获取真实URL
+        if (
+            url.startsWith('http://www.baidu.com/link?') ||
+            url.startsWith('https://www.baidu.com/link?')
+        ) {
+            console.log('检测到百度重定向链接，获取真实URL');
+
+            try {
+                const redirectResponse = await fetch(url, {
+                    method: 'GET',
+                    redirect: 'manual', // 不自动跟随重定向，以便我们获取Location头
+                    headers: {
+                        'User-Agent':
+                            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
+                    },
+                });
+
+                // 检查是否是重定向响应
+                if (redirectResponse.status === 302 || redirectResponse.status === 301) {
+                    const location = redirectResponse.headers.get('Location');
+                    if (location) {
+                        targetUrl = location;
+                        console.log('获取到真实URL:', targetUrl);
+                    }
+                }
+            } catch (redirectError) {
+                console.error('解析百度重定向链接失败:', redirectError);
+                // 如果失败，继续使用原始URL
+            }
+        }
+
+        // 创建一个请求，使用合适的User-Agent以模拟浏览器
+        const contentResponse = await fetch(targetUrl, {
+            method: 'GET',
+            headers: {
+                'Accept':
+                    'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'User-Agent':
+                    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36',
+                'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            },
+        });
+
+        if (!contentResponse.ok) {
+            throw new Error(
+                `Failed to fetch page: ${contentResponse.status} ${contentResponse.statusText}`,
+            );
+        }
+
+        const html = await contentResponse.text();
+
+        // 使用cheerio解析HTML
+        const $ = load(html);
+
+        // 移除不需要的元素
+        $('script, style, meta, link, noscript, svg, iframe, img').remove();
+
+        // 获取标题
+        const title = $('title').text().trim();
+
+        // 获取正文内容，规范化空白
+        const bodyText = $('body').text().replace(/\s+/g, ' ').trim();
+
+        // 限制内容长度
+        const maxContentLength = 5000;
+        let content =
+            bodyText.length > maxContentLength
+                ? bodyText.substring(0, maxContentLength) + '...'
+                : bodyText;
+
+        return `${title}\n\n${content}`;
+    } catch (error: any) {
+        console.error('Failed to fetch web content:', error);
+        return `Error fetching content from ${url}: ${error.message || 'Unknown error'}`;
+    }
+}
 
 chrome.declarativeNetRequest.updateDynamicRules(
     {
@@ -120,6 +265,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
 
+    if (request.action === 'performSearch') {
+        console.log('📡 处理搜索请求:', request.query);
+        searchWeb(request.query)
+            .then((results) => {
+                sendResponse({ success: true, results });
+            })
+            .catch((error) => {
+                console.error('搜索处理失败:', error);
+                sendResponse({ success: false, error: error.message });
+            });
+        return true; // 确保异步 sendResponse 可以工作
+    }
+
+    if (request.action === 'fetchWebContent') {
+        console.log('📡 处理网页内容获取请求:', request.url);
+        fetchWebPage(request.url)
+            .then((content) => {
+                // Return the content without parsing for thinking parts
+                sendResponse({
+                    success: true,
+                    content: content,
+                });
+            })
+            .catch((error: any) => {
+                console.error('网页内容获取失败:', error);
+                sendResponse({ success: false, error: error.message || 'Unknown error' });
+            });
+        return true; // 确保异步 sendResponse 可以工作
+    }
+
     if (request.action === 'abortRequest') {
         console.log('🚫 中止请求', sender?.tab?.id);
         if (sender?.tab?.id) {
@@ -148,12 +323,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     return false; // 没有匹配到任务
 });
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
     chrome.contextMenus.create({
         id: 'openChatWindow',
         title: '打开 AI 窗口聊天',
         contexts: ['page', 'selection', 'image', 'link'],
     });
+
+    if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
+        // 打开说明页面
+        chrome.tabs.create({
+            url: chrome.runtime.getURL('/install.html'),
+        });
+    }
 });
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {

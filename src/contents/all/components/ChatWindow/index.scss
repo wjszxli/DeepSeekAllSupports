@@ -152,3 +152,8 @@
         pointer-events: none;
     }
 }
+
+// Fix for tooltips being hidden behind the chat window
+.ant-tooltip {
+    z-index: 10000 !important; // Higher than the chat window's z-index
+}
