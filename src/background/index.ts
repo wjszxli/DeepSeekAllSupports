@@ -55,7 +55,7 @@ async function searchWeb(query: string): Promise<SearchResult[]> {
                     snippet,
                 });
             }
-            
+
             // Return true to continue iteration
             return true;
         });
