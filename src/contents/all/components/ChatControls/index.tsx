@@ -1,13 +1,19 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Switch, Tooltip } from 'antd';
-import { GlobalOutlined, LinkOutlined } from '@ant-design/icons';
+import { Switch, Tooltip, Button } from 'antd';
+import { GlobalOutlined, LinkOutlined, StopOutlined, DeleteOutlined } from '@ant-design/icons';
 import storage from '@/utils/storage';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { featureSettings } from '@/utils/featureSettings';
 
 import './index.scss';
 
-const ChatControls: React.FC = () => {
+interface ChatControlsProps {
+    isLoading?: boolean;
+    onStop?: () => void;
+    onClear?: () => void;
+}
+
+const ChatControls: React.FC<ChatControlsProps> = ({ isLoading, onStop, onClear }) => {
     const [webSearchEnabled, setWebSearchEnabled] = useState(false);
     const [useWebpageContext, setUseWebpageContext] = useState(true);
     const { t } = useLanguage();
@@ -86,6 +92,26 @@ const ChatControls: React.FC = () => {
                     />
                 </div>
             </Tooltip>
+            {isLoading && onStop && (
+                <Tooltip title={t('stop')}>
+                    <Button
+                        type="text"
+                        icon={<StopOutlined />}
+                        onClick={onStop}
+                        className="control-button"
+                    />
+                </Tooltip>
+            )}
+            {onClear && (
+                <Tooltip title={t('clearChat')}>
+                    <Button
+                        type="text"
+                        icon={<DeleteOutlined />}
+                        onClick={onClear}
+                        className="control-button"
+                    />
+                </Tooltip>
+            )}
         </div>
     );
 };

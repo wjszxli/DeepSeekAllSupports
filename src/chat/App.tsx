@@ -21,9 +21,7 @@ import './App.scss';
 import Robot from './components/Robot';
 import Topic from './components/Topic';
 import ChatBody from './components/ChatBody';
-
-// Add feedback survey URL constant
-const FEEDBACK_SURVEY_URL = 'https://wj.qq.com/s2/18763807/74b5/';
+import { FEEDBACK_SURVEY_URL } from '@/utils/constant';
 
 const { Option } = Select;
 

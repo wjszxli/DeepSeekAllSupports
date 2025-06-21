@@ -4,13 +4,17 @@ import { Tooltip, Typography } from 'antd';
 import storage from '@/utils/storage';
 import { removeChatButton, removeChatBox } from '@/utils';
 
-import ChatInterface from '../ChatInterface/index';
+import ChatInterface from './components/ChatInterface/index';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useStableCallback, useThrottledCallback } from '@/utils/reactOptimizations';
 import settingStore from '@/store/setting';
+import robotStore from '@/store/robot';
 
 import './index.scss';
+import { HeaderActionsProps, WindowState } from './type';
 import { FEEDBACK_SURVEY_URL } from '@/utils/constant';
+import getMessageService from '@/services/MessageService';
+import rootStore from '@/store';
 
 type ActionType =
     | { type: 'SET_POSITION'; payload: { x: number; y: number } }
@@ -18,18 +22,11 @@ type ActionType =
     | { type: 'SET_VISIBILITY'; payload: boolean }
     | { type: 'TOGGLE_PIN' };
 
-interface WindowState {
-    position: { x: number; y: number };
-    size: { width: number; height: number };
-    isVisible: boolean;
-    isPinned: boolean;
-}
-
 const HighZIndexTooltip: React.FC<React.ComponentProps<typeof Tooltip>> = ({
     children,
     ...props
 }) => (
-    <Tooltip {...props} overlayStyle={{ zIndex: 10001 }}>
+    <Tooltip {...props} styles={{ root: { zIndex: 10001 } }}>
         {children}
     </Tooltip>
 );
@@ -42,14 +39,7 @@ const HeaderActions = memo(
         pinTooltip,
         closeTooltip,
         feedbackTooltip,
-    }: {
-        isPinned: boolean;
-        togglePin: () => void;
-        onCancel: () => void;
-        pinTooltip: string;
-        closeTooltip: string;
-        feedbackTooltip: string;
-    }) => (
+    }: HeaderActionsProps) => (
         <div className="chat-window-actions">
             <HighZIndexTooltip title={feedbackTooltip} placement="bottom">
                 <div
@@ -77,17 +67,15 @@ const HeaderActions = memo(
                     )}
                 </div>
             </HighZIndexTooltip>
-            <HighZIndexTooltip title={closeTooltip} placement="bottom">
-                <div
-                    className="header-action-button close-button"
-                    onClick={onCancel}
-                    role="button"
-                    tabIndex={0}
-                    aria-label={closeTooltip}
-                >
-                    <CloseOutlined style={{ fontSize: 16 }} />
-                </div>
-            </HighZIndexTooltip>
+            <div
+                className="header-action-button close-button"
+                onClick={onCancel}
+                role="button"
+                tabIndex={0}
+                aria-label={closeTooltip}
+            >
+                <CloseOutlined style={{ fontSize: 16 }} />
+            </div>
         </div>
     ),
 );
@@ -112,6 +100,14 @@ const ChatWindow = ({ x, y, text }: { x: number; y: number; text?: string }) => 
     const chatBoxRef = useRef<HTMLDivElement>(null);
     const dragStartRef = useRef({ x: 0, y: 0 });
     const { t } = useLanguage();
+    const messageService = useMemo(() => getMessageService(rootStore), []);
+    // 获取当前机器人
+    const selectedRobot = useMemo(() => robotStore.selectedRobot, [robotStore.selectedRobot]);
+
+    const selectedTopicId = useMemo(
+        () => selectedRobot?.selectedTopicId || '',
+        [selectedRobot?.selectedTopicId],
+    );
 
     const [state, dispatch] = useReducer(windowReducer, {
         position: { x, y },
@@ -160,11 +156,7 @@ const ChatWindow = ({ x, y, text }: { x: number; y: number; text?: string }) => 
     const onCancel = useCallback(async () => {
         await storage.remove('chatHistory');
         removeChatBox();
-
-        if (window.currentAbortController) {
-            window.currentAbortController.abort();
-            (window as any).currentAbortController = null;
-        }
+        messageService.cancelCurrentStream(selectedTopicId);
     }, []);
 
     const togglePin = useCallback(() => {
@@ -352,6 +344,7 @@ const ChatWindow = ({ x, y, text }: { x: number; y: number; text?: string }) => 
                 <Typography.Text strong style={{ fontSize: '14px', color: '#2c3e50' }}>
                     {assistantLabel}
                 </Typography.Text>
+
                 <HeaderActions
                     isPinned={isPinned}
                     togglePin={togglePin}

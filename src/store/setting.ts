@@ -5,10 +5,16 @@ import { Logger } from '@/utils/logger';
 
 const logger = new Logger('settingStore');
 
+export interface ChatBoxSize {
+    width: number;
+    height: number;
+}
+
 export interface SettingsState {
     // Interface settings
     isChatBoxIcon: boolean;
     useWebpageContext: boolean;
+    size: ChatBoxSize;
 
     // Search settings
     webSearchEnabled: boolean;
@@ -22,6 +28,7 @@ export interface SettingsState {
 // Setting keys
 const IS_CHAT_BOX_ICON_KEY = 'isChatBoxIcon';
 const USE_WEBPAGE_CONTEXT_KEY = 'useWebpageContext';
+const SIZE_KEY = 'size';
 const WEB_SEARCH_ENABLED_KEY = 'webSearchEnabled';
 const ENABLED_SEARCH_ENGINES_KEY = 'enabledSearchEngines';
 const TAVILY_API_KEY = 'tavilyApiKey';
@@ -29,10 +36,14 @@ const EXA_API_KEY = 'exaApiKey';
 const BOCHA_API_KEY = 'bochaApiKey';
 const FILTERED_DOMAINS_KEY = 'filteredDomains';
 
+// Default values
+const DEFAULT_SIZE: ChatBoxSize = { width: 600, height: 800 };
+
 class SettingStore {
     // Interface settings
     isChatBoxIcon: boolean = true;
     useWebpageContext: boolean = true;
+    size: ChatBoxSize = DEFAULT_SIZE;
 
     // Search settings
     webSearchEnabled: boolean = false;
@@ -52,6 +63,7 @@ class SettingStore {
             // Load individual settings
             const isChatBoxIcon = await db.settings.get(IS_CHAT_BOX_ICON_KEY);
             const useWebpageContext = await db.settings.get(USE_WEBPAGE_CONTEXT_KEY);
+            const size = await db.settings.get(SIZE_KEY);
             const webSearchEnabled = await db.settings.get(WEB_SEARCH_ENABLED_KEY);
             const enabledSearchEngines = await db.settings.get(ENABLED_SEARCH_ENGINES_KEY);
             const tavilyApiKey = await db.settings.get(TAVILY_API_KEY);
@@ -62,6 +74,7 @@ class SettingStore {
             // Apply settings if they exist
             if (isChatBoxIcon !== undefined) this.isChatBoxIcon = isChatBoxIcon.value;
             if (useWebpageContext !== undefined) this.useWebpageContext = useWebpageContext.value;
+            if (size !== undefined) this.size = size.value;
             if (webSearchEnabled !== undefined) this.webSearchEnabled = webSearchEnabled.value;
             if (enabledSearchEngines !== undefined)
                 this.enabledSearchEngines = enabledSearchEngines.value;
@@ -69,10 +82,36 @@ class SettingStore {
             if (exaApiKey !== undefined) this.exaApiKey = exaApiKey.value;
             if (bochaApiKey !== undefined) this.bochaApiKey = bochaApiKey.value;
             if (filteredDomains !== undefined) this.filteredDomains = filteredDomains.value;
+
+            // Migration: Check for old width/height values in chrome storage
+            await this.migrateOldSizeSettings();
         } catch (error) {
             logger.error('Failed to load settings:', error);
             // Save default settings if loading fails
             this.saveSettings();
+        }
+    }
+
+    async migrateOldSizeSettings() {
+        try {
+            // Check for old width/height values in chrome storage
+            const result = await chrome.storage.local.get(['width', 'height']);
+
+            if (result.width || result.height) {
+                const width = result.width || DEFAULT_SIZE.width;
+                const height = result.height || DEFAULT_SIZE.height;
+
+                // Update the size setting with migrated values
+                this.size = { width, height };
+                await this.saveSettings();
+
+                // Remove old keys
+                await chrome.storage.local.remove(['width', 'height']);
+
+                logger.info('Migrated old size settings to new format');
+            }
+        } catch (error) {
+            logger.warn('Failed to migrate old size settings:', error);
         }
     }
 
@@ -81,6 +120,7 @@ class SettingStore {
             // Save each setting individually
             await db.settings.put({ key: IS_CHAT_BOX_ICON_KEY, value: this.isChatBoxIcon });
             await db.settings.put({ key: USE_WEBPAGE_CONTEXT_KEY, value: this.useWebpageContext });
+            await db.settings.put({ key: SIZE_KEY, value: JSON.parse(JSON.stringify(this.size)) });
             await db.settings.put({ key: WEB_SEARCH_ENABLED_KEY, value: this.webSearchEnabled });
             await db.settings.put({
                 key: ENABLED_SEARCH_ENGINES_KEY,
@@ -109,6 +149,7 @@ class SettingStore {
         return {
             isChatBoxIcon: this.isChatBoxIcon,
             useWebpageContext: this.useWebpageContext,
+            size: this.size,
             webSearchEnabled: this.webSearchEnabled,
             enabledSearchEngines: this.enabledSearchEngines,
             tavilyApiKey: this.tavilyApiKey,
@@ -124,6 +165,7 @@ class SettingStore {
         if (settings.isChatBoxIcon !== undefined) this.isChatBoxIcon = settings.isChatBoxIcon;
         if (settings.useWebpageContext !== undefined)
             this.useWebpageContext = settings.useWebpageContext;
+        if (settings.size !== undefined) this.size = settings.size;
         if (settings.webSearchEnabled !== undefined)
             this.webSearchEnabled = settings.webSearchEnabled;
         if (settings.enabledSearchEngines !== undefined)
@@ -160,6 +202,20 @@ class SettingStore {
         }
 
         this.saveSettings();
+    }
+
+    // Size settings methods
+    setSize(size: ChatBoxSize) {
+        this.size = { ...size };
+        this.saveSettings();
+    }
+
+    setChatBoxSize(size: ChatBoxSize) {
+        this.setSize(size);
+    }
+
+    getChatBoxSize(): ChatBoxSize {
+        return { ...this.size };
     }
 
     // Search settings methods

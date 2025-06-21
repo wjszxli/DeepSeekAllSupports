@@ -7,23 +7,29 @@ import { PROVIDERS_DATA } from './constant';
 // 封装存储 & 读取 & 监听变化的方法
 const storageUtils = {
     //  存储数据
-    set: (key: string, value: any): Promise<void> => {
-        return new Promise((resolve) => {
-            chrome.storage.local.set({ [key]: value }, () => resolve());
-        });
+    set: async <T>(key: string, value: T): Promise<void> => {
+        try {
+            await chrome.storage.local.set({ [key]: value });
+        } catch (error) {
+            console.error(`Failed to set ${key}:`, error);
+        }
     },
-    remove: (key: string): Promise<void> => {
-        return new Promise((resolve) => {
-            chrome.storage.local.remove([key], () => resolve());
-        });
+    remove: async (key: string): Promise<void> => {
+        try {
+            await chrome.storage.local.remove(key);
+        } catch (error) {
+            console.error(`Failed to remove ${key}:`, error);
+        }
     },
     //  读取数据
-    get: <T>(key: string): Promise<T | null> => {
-        return new Promise((resolve) => {
-            chrome.storage.local.get([key], (result) => {
-                resolve(result[key] || null);
-            });
-        });
+    get: async <T>(key: string): Promise<T | null> => {
+        try {
+            const result = await chrome.storage.local.get(key);
+            return result[key] || null;
+        } catch (error) {
+            console.error(`Failed to get ${key}:`, error);
+            return null;
+        }
     },
 
     //  监听数据变化
@@ -98,14 +104,13 @@ const storageUtils = {
         await storageUtils.setProviders(providers);
     },
 
+    // Chat box size methods - now use settings store
     setChatBoxSize: async ({ width, height }: { width: number; height: number }): Promise<void> => {
-        await storageUtils.set('height', height);
-        await storageUtils.set('width', width);
+        settingStore.setChatBoxSize({ width, height });
     },
+
     getChatBoxSize: async () => {
-        const width = (await storageUtils.get<number>('width')) || 500;
-        const height = (await storageUtils.get<number>('height')) || 500;
-        return { width, height };
+        return settingStore.getChatBoxSize();
     },
 
     // Settings-related methods now use settingStore

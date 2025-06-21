@@ -21,29 +21,8 @@ import { featureSettings } from '@/utils/featureSettings';
 import rootStore from '@/store';
 import { getMessageService } from '@/services/MessageService';
 import { getUserMessage } from '@/utils/message/input';
-
-interface ChatInterfaceProps {
-    initialText?: string;
-}
-
-interface MessageBubbleProps {
-    message: ChatMessage;
-    isStreaming: boolean;
-    t: (key: TranslationKey) => string;
-    copyToClipboard: (text: string) => void;
-    regenerateResponse: () => void;
-}
-
-interface EmptyChatProps {
-    t: (key: TranslationKey) => string;
-    handleExampleClick: (text: string) => void;
-}
-
-interface Prompt {
-    key: string;
-    name: string;
-    content: string;
-}
+import { MessageBlockType, MainTextMessageBlock, ThinkingMessageBlock } from '@/types/messageBlock';
+import { ChatInterfaceProps, EmptyChatProps, MessageBubbleProps, Prompt } from '../../type';
 
 const MessageBubble = memo(
     ({ message, isStreaming, t, copyToClipboard, regenerateResponse }: MessageBubbleProps) => {
@@ -54,18 +33,23 @@ const MessageBubble = memo(
         }, []);
 
         const handleCopy = useCallback(() => {
-            copyToClipboard(message.text);
+            const response = message.text;
+            copyToClipboard(response);
         }, [copyToClipboard, message.text]);
 
+        // 渲染消息内容
         const renderMessageContent = useCallback(() => {
             if (message.sender === 'ai') {
                 const { thinking = '', text: response } = message;
 
+                // 通用的渲染Markdown函数
                 const renderMarkdown = (content: string) => {
                     return md.render(content || '');
                 };
 
+                // 先检查是否有思考部分
                 if (thinking) {
+                    // 渲染思考和响应内容
                     const thinkingHtml = renderMarkdown(thinking);
                     const responseHtml = renderMarkdown(response);
 
@@ -97,7 +81,9 @@ const MessageBubble = memo(
                     );
                 }
 
+                // 没有思考部分，只渲染响应
                 const renderedHtml = renderMarkdown(message.text);
+
                 return (
                     <div
                         className={`message-content ${isStreaming ? 'streaming' : ''}`}
@@ -173,7 +159,6 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
     const [streamingMessageId, setStreamingMessageId] = useState<number | null>(null);
     const [webSearchEnabled, setWebSearchEnabled] = useState(false);
     const [useWebpageContext, setUseWebpageContext] = useState(true);
-
     const { t } = useLanguage();
     const messagesWrapperRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -250,9 +235,46 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
         if (window.currentAbortController) {
             window.currentAbortController.abort();
         }
+
         setStreamingMessageId(null);
         setIsLoading(false);
     }, []);
+
+    // Effect to monitor message blocks for updates
+    useEffect(() => {
+        const handleMessageBlockUpdate = (event: Event) => {
+            const customEvent = event as CustomEvent<{
+                blockId: string;
+                content: string;
+                type: string;
+            }>;
+            if (!customEvent.detail) return;
+
+            const { content, type } = customEvent.detail;
+
+            if (streamingMessageId) {
+                setMessages((prevMessages) => {
+                    return prevMessages.map((msg) => {
+                        if (msg.id === streamingMessageId) {
+                            if (type === MessageBlockType.MAIN_TEXT) {
+                                return { ...msg, text: content };
+                            } else if (type === MessageBlockType.THINKING) {
+                                return { ...msg, thinking: content };
+                            }
+                        }
+                        return msg;
+                    });
+                });
+            }
+        };
+
+        // Create and dispatch a custom event for testing
+        document.addEventListener('message_block_update', handleMessageBlockUpdate);
+
+        return () => {
+            document.removeEventListener('message_block_update', handleMessageBlockUpdate);
+        };
+    }, [streamingMessageId]);
 
     const sendChatMessage = useCallback(
         async (inputText: string) => {
@@ -267,9 +289,11 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
             setMessages((prev) => [...prev, userMessage]);
             setIsLoading(true);
 
+            // Generate AI message ID
             const aiMessageId = Date.now() + 100;
 
             try {
+                // Create initial AI message with thinking indicator
                 const aiMessage: ChatMessage = {
                     id: aiMessageId,
                     text: t('thinking'),
@@ -298,32 +322,57 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
                     selectedTopicId: 'default-topic',
                 };
 
+                // Use the MessageService to send the message
                 const { message, blocks } = getUserMessage({
                     robot: defaultRobot,
                     topic: defaultRobot.topics[0],
                     content: inputText,
                 });
 
-                // Send the message
-                await messageService.sendMessage(message, blocks, defaultRobot, 'default-topic');
+                // Set up a monitor for the message blocks
+                const monitorInterval = setInterval(() => {
+                    // Check for updated blocks in the store
+                    const updatedBlocks = rootStore.messageBlockStore.blocks;
 
-                // For now, simulate a simple response
-                setTimeout(() => {
+                    // Find relevant blocks for our message
+                    const mainTextBlock = Array.from(updatedBlocks.values()).find(
+                        (b) => b.messageId === message.id && b.type === MessageBlockType.MAIN_TEXT,
+                    ) as MainTextMessageBlock | undefined;
+
+                    const thinkingBlock = Array.from(updatedBlocks.values()).find(
+                        (b) => b.messageId === message.id && b.type === MessageBlockType.THINKING,
+                    ) as ThinkingMessageBlock | undefined;
+
+                    // Update our UI based on the blocks
                     setMessages((prevMessages) => {
                         return prevMessages.map((msg) => {
                             if (msg.id === aiMessageId) {
                                 return {
                                     ...msg,
-                                    text: "I'm a simple AI assistant. This is a placeholder response while the full integration is being completed.",
+                                    text: mainTextBlock?.content || msg.text,
+                                    thinking: thinkingBlock?.content || msg.thinking,
                                 };
                             }
                             return msg;
                         });
                     });
-                    setStreamingMessageId(null);
-                    setIsLoading(false);
-                }, 1000);
 
+                    // If the message is done, clear the interval
+                    const messageComplete = mainTextBlock?.status === 'success';
+                    if (messageComplete) {
+                        clearInterval(monitorInterval);
+                    }
+                }, 100);
+
+                // Send the message
+                await messageService.sendMessage(message, blocks, defaultRobot, 'default-topic');
+
+                // Clean up the interval
+                clearInterval(monitorInterval);
+
+                // Request completed
+                setStreamingMessageId(null);
+                setIsLoading(false);
                 scrollToBottom();
             } catch (error) {
                 console.error('Error sending message:', error);
@@ -338,11 +387,16 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
     const regenerateResponse = useCallback(async () => {
         if (messages.length < 2 || isLoading) return;
 
+        // Find the last user message
         const lastUserMessageIndex = messages.map((m) => m.sender).lastIndexOf('user');
         if (lastUserMessageIndex === -1) return;
 
         const lastUserMessage = messages[lastUserMessageIndex];
+
+        // Remove the last AI response
         setMessages((prev) => prev.slice(0, -1));
+
+        // Resend the last user message
         await sendChatMessage(lastUserMessage.text);
     }, [messages, isLoading, sendChatMessage]);
 
@@ -357,6 +411,13 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
         });
     }, [t]);
 
+    const isInputEmpty = useMemo(() => inputMessage.trim() === '', [inputMessage]);
+    const shouldDisableButton = useMemo(
+        () => isLoading || isInputEmpty || isComposing,
+        [isLoading, isInputEmpty, isComposing],
+    );
+
+    // 定义常用提示
     const commonPrompts: Prompt[] = useMemo(
         () => [
             {
@@ -392,6 +453,7 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
         const value = e.target.value;
         setInputMessage(value);
 
+        // 处理提示建议
         if (value.startsWith('/') && !isLoading) {
             const query = value.slice(1).toLowerCase();
             const filtered = commonPrompts.filter((prompt) =>
@@ -403,6 +465,14 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
         } else {
             setShowPrompts(false);
         }
+    };
+
+    const handleCompositionStart = () => {
+        setIsComposing(true);
+    };
+
+    const handleCompositionEnd = () => {
+        setIsComposing(false);
     };
 
     const handleKeyDown = useCallback(
@@ -430,7 +500,8 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
                 return;
             }
 
-            if (e.key === 'Enter' && !e.shiftKey && !isLoading && inputMessage.trim()) {
+            // 处理发送消息
+            if (e.key === 'Enter' && !e.shiftKey && !shouldDisableButton) {
                 e.preventDefault();
                 sendChatMessage(inputMessage);
                 setInputMessage('');
@@ -440,25 +511,28 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
             showPrompts,
             filteredPrompts,
             selectedPromptIndex,
-            isLoading,
+            shouldDisableButton,
             inputMessage,
             sendChatMessage,
         ],
     );
 
     const handleSend = useCallback(() => {
-        if (!isLoading && inputMessage.trim()) {
+        if (!shouldDisableButton) {
             sendChatMessage(inputMessage);
             setInputMessage('');
         }
-    }, [isLoading, inputMessage, sendChatMessage]);
+    }, [shouldDisableButton, sendChatMessage, inputMessage]);
 
-    const handleExampleClick = useCallback((text: string) => {
-        setInputMessage(text);
-        if (inputRef.current) {
-            inputRef.current.focus();
-        }
-    }, []);
+    const handleExampleClick = useCallback(
+        (text: string) => {
+            setInputMessage(text);
+            if (inputRef.current) {
+                inputRef.current.focus();
+            }
+        },
+        [inputRef],
+    );
 
     return (
         <div className="chat-interface">
@@ -543,11 +617,11 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
                             value={inputMessage}
                             onChange={handleInputChange}
                             onKeyDown={handleKeyDown}
-                            onCompositionStart={() => setIsComposing(true)}
-                            onCompositionEnd={() => setIsComposing(false)}
+                            onCompositionStart={handleCompositionStart}
+                            onCompositionEnd={handleCompositionEnd}
                             placeholder={t('typeMessage')}
                             autoSize={{ minRows: 1, maxRows: 5 }}
-                            disabled={isLoading}
+                            disabled={isLoading && streamingMessageId !== null}
                         />
 
                         {showPrompts && (
@@ -577,7 +651,7 @@ const ChatInterface = ({ initialText }: ChatInterfaceProps) => {
                         type="primary"
                         icon={<SendOutlined />}
                         onClick={handleSend}
-                        disabled={isLoading || !inputMessage.trim() || isComposing}
+                        disabled={shouldDisableButton}
                         className="send-button"
                     />
                 </div>

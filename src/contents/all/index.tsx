@@ -6,8 +6,9 @@ import storage from '@/utils/storage';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { setLocale } from '@/locales/i18n';
 import type { LocaleType } from '@/locales';
+import settingStore from '@/store/setting';
 
-import ChatWindow from './components/ChatWindow';
+import ChatWindow from '../chat/index';
 import { IframeSidePanelManager } from './components/IframeSidePanel/index';
 import './styles/animations.css';
 import './styles/highlight.css';
@@ -133,7 +134,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 document.addEventListener(
     'mouseup',
     debounce(async (event) => {
-        // Chat button should not appear right after clicking on an element
         if (event.target && (event.target as Element).id === CHAT_BUTTON_ID) {
             return;
         }
@@ -194,7 +194,6 @@ const injectChatButton = (x: number, y: number, text: string) => {
         e.preventDefault();
         e.stopPropagation();
 
-        // Clear text selection first to prevent mouseup from reinjecting the button
         window.getSelection()?.removeAllRanges();
 
         // Use setTimeout to ensure the selection clear takes effect before we remove the button
@@ -213,15 +212,15 @@ const injectChatBox = (x: number, y: number, text: string) => {
         y: window.scrollY,
     };
 
-    // First, ensure the chat button is removed and the text selection is cleared
     removeChatButton();
     window.getSelection()?.removeAllRanges();
 
     // 确保位置在视图区域内
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const chatWidth = 600;
-    const chatHeight = 800;
+    const defaultSize = settingStore.getChatBoxSize();
+    const chatWidth = defaultSize.width;
+    const chatHeight = defaultSize.height;
 
     // 计算居中位置
     let centerX = Math.max(0, Math.min(x, viewportWidth - chatWidth - 20));

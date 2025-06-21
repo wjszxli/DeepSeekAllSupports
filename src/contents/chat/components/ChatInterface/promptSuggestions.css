@@ -1,0 +1,51 @@
+/* Prompt Suggestions Overlay Styles */
+
+.prompt-suggestions-overlay {
+    position: fixed;
+    bottom: 90px;  /* Position above the input area */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;  /* Take up 80% of the container width */
+    max-width: 500px;
+    z-index: 9999;  /* Very high z-index to ensure it's on top of everything */
+}
+
+.prompt-suggestions {
+    width: 100%;
+    max-height: 300px;
+    overflow-y: auto;
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    border: 1px solid #e0e0e0;
+}
+
+.prompt-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.prompt-item:hover {
+    background-color: #f5f7fa;
+}
+
+.prompt-item.selected {
+    background-color: #f0f5ff;
+    border-left: 3px solid #4776e6;
+}
+
+.prompt-name {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 4px;
+    color: #333;
+}
+
+.prompt-preview {
+    font-size: 12px;
+    color: #666;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+} 

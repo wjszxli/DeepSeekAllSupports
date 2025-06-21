@@ -1,16 +1,14 @@
-import type { OllamaResponse } from '@/types';
-import { fetchData, handleMessage, initLogger, isLocalhost, Logger } from '@/utils';
+import { initLogger, Logger } from '@/utils';
 import { MODIFY_HEADERS_RULE_ID, PROVIDERS_DATA } from '@/utils/constant';
 import storage from '@/utils/storage';
 
-import { fetchWebPage, searchWeb } from './search';
-
-// Initialize logger
 const logger = new Logger('background');
+
 initLogger().then((config) => {
     logger.info('Logger initialized with config', config);
 });
 
+// 修改请求头
 chrome.declarativeNetRequest.updateDynamicRules(
     {
         addRules: [
@@ -47,8 +45,6 @@ chrome.declarativeNetRequest.updateDynamicRules(
         }
     },
 );
-
-const requestControllers = new Map();
 
 // 监听 `popup.ts` 或 `content.ts` 发送的消息，并代理 API 请求
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
@@ -98,138 +94,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             });
         });
 
-        return true;
-    }
-
-    if (request.action === 'fetchData') {
-        const controller = new AbortController();
-        const tabId = sender?.tab?.id;
-
-        if (tabId) {
-            requestControllers.set(tabId, controller);
-            logger.debug('Request controller set for tab', { tabId });
-        }
-
-        logger.info('Sending API request', { url: request.url, method: request.method });
-
-        fetchData({
-            url: request.url,
-            method: request.method,
-            headers: request.headers,
-            body: request.body,
-            onStream: (chunk) => {
-                storage.getConfig().then((config) => {
-                    const { selectedProvider } = config;
-                    if (isLocalhost(selectedProvider)) {
-                        try {
-                            const data: OllamaResponse = JSON.parse(chunk);
-                            const {
-                                message: { content },
-                                done,
-                            } = data;
-                            if (done && tabId) {
-                                chrome.tabs.sendMessage(tabId, {
-                                    type: 'streamResponse',
-                                    response: { data: 'data: [DONE]\n\n', ok: true, done: true },
-                                });
-                            } else if (content && tabId) {
-                                chrome.tabs.sendMessage(tabId, {
-                                    type: 'streamResponse',
-                                    response: { data: content, ok: true, done: false },
-                                });
-                            }
-                        } catch (error) {
-                            logger.error('streamResponse error', error);
-                            logger.debug('tabId', tabId);
-                            sendResponse({ ok: false, error });
-                            if (tabId) {
-                                chrome.tabs.sendMessage(tabId, {
-                                    type: 'streamResponse',
-                                    response: { data: 'data: [DONE]\n\n', ok: false, done: true },
-                                });
-                            }
-                        }
-                    } else if (tabId) {
-                        handleMessage(chunk, { tab: { id: tabId } });
-                    }
-                });
-            },
-            controller,
-        })
-            .then((response) => {
-                if (!request.body.includes('"stream":true')) {
-                    sendResponse(response);
-                }
-            })
-            .catch((error) => {
-                if (tabId) {
-                    requestControllers.delete(tabId);
-                }
-                sendResponse({ ok: false, error: error.message });
-            })
-            .finally(() => {
-                if (tabId) {
-                    requestControllers.delete(tabId);
-                }
-            });
-
-        return true;
-    }
-
-    if (request.action === 'performSearch') {
-        logger.info('📡 处理搜索请求:', request.query);
-        searchWeb(request.query)
-            .then((results) => {
-                sendResponse({ success: true, results });
-            })
-            .catch((error) => {
-                logger.error('搜索处理失败:', error);
-                sendResponse({ success: false, error: error.message });
-            });
-        return true; // 确保异步 sendResponse 可以工作
-    }
-
-    if (request.action === 'fetchWebContent') {
-        logger.info('📡 处理网页内容获取请求:', request.url);
-        fetchWebPage(request.url)
-            .then((content) => {
-                // Return the content without parsing for thinking parts
-                sendResponse({
-                    success: true,
-                    content: content,
-                });
-            })
-            .catch((error: any) => {
-                logger.error('网页内容获取失败:', error);
-                sendResponse({ success: false, error: error.message || 'Unknown error' });
-            });
-        return true; // 确保异步 sendResponse 可以工作
-    }
-
-    if (request.action === 'abortRequest') {
-        const tabId = sender?.tab?.id;
-        logger.info('Aborting request', { tabId });
-        logger.info('🚫 中止请求', tabId);
-        if (tabId) {
-            const controller = requestControllers.get(tabId);
-            if (controller) {
-                controller.abort();
-                requestControllers.delete(tabId);
-                sendResponse({ success: true });
-            }
-        } else {
-            sendResponse({ success: false, error: 'No active request to abort' });
-        }
-        return true;
-    }
-
-    if (request.action === 'getStorage') {
-        storage.get(request.key).then((value) => sendResponse({ value }));
-        return true; // 确保 sendResponse 可异步返回
-    }
-
-    if (request.action === 'setStorage') {
-        storage.set(request.key, request.value).then(() => sendResponse({ success: true }));
         return true;
     }
 
