@@ -12,7 +12,9 @@ const manifest: Manifest.WebExtensionManifest = {
     permissions: ['storage', 'declarativeNetRequest', 'contextMenus', 'commands', 'activeTab', 'scripting', 'sidePanel'],
     host_permissions: ['https://*/*', 'http://*/*'],
     content_security_policy: {
-        extension_pages: "script-src 'self' http://localhost; object-src 'self';",
+        extension_pages: __DEV__
+            ? "script-src 'self' http://localhost; object-src 'self';"
+            : "script-src 'self'; object-src 'self';",
     },
     web_accessible_resources: [
         {
@@ -22,13 +24,12 @@ const manifest: Manifest.WebExtensionManifest = {
     ],
     background: {
         service_worker: 'js/background.js',
-        persistent: true,
     },
     content_scripts: [
         {
             matches: ['<all_urls>'],
             css: ['css/all.css'],
-            js: ['js/all.js', ...(__DEV__ ? [] : ['js/all.js'])],
+            js: ['js/all.js'],
         },
     ],
     action: {
