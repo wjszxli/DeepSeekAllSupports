@@ -14,15 +14,37 @@ declare global {
     }
 }
 
-// 使用 WeakMap 来缓存已处理过的数学公式
-const processedTexts = new Map();
+// LRU cache with capacity limit to prevent unbounded memory growth
+const MAX_CACHE_SIZE = 500;
 
-// 使用 Memoization 优化预处理数学公式
+function createLRUCache<K, V>(maxSize: number) {
+    const cache = new Map<K, V>();
+    return {
+        get(key: K): V | undefined {
+            return cache.get(key);
+        },
+        set(key: K, value: V): void {
+            if (cache.size >= maxSize && !cache.has(key)) {
+                const oldestKey = cache.keys().next().value;
+                if (oldestKey !== undefined) {
+                    cache.delete(oldestKey);
+                }
+            }
+            cache.set(key, value);
+        },
+        has(key: K): boolean {
+            return cache.has(key);
+        },
+    };
+}
+
+const processedTexts = createLRUCache<string, string>(MAX_CACHE_SIZE);
+
 const memoizedPreprocessMath = (() => {
-    const cache = new Map();
-    return (text: string) => {
+    const cache = createLRUCache<string, string>(MAX_CACHE_SIZE);
+    return (text: string): string => {
         if (cache.has(text)) {
-            return cache.get(text);
+            return cache.get(text) as string;
         }
 
         const result = preprocessMath(text);

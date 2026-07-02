@@ -25,7 +25,7 @@ import {
 // import { getTopicQueue, waitForTopicQueue } from '@/utils/queue';
 import { getTopicQueue, waitForTopicQueue } from '@/utils/queue';
 import { throttle } from 'lodash';
-import { runInAction } from 'mobx';
+import { runInAction, toJS } from 'mobx';
 
 import type { RootStore } from '@/store';
 import { abortCompletion } from '@/utils/abortController';
@@ -95,7 +95,7 @@ export class MessageService {
         try {
             if (blocks.length > 0) {
                 // 序列化 MobX 对象
-                const serializedBlocks = blocks.map((block) => JSON.parse(JSON.stringify(block)));
+                const serializedBlocks = blocks.map((block) => toJS(block));
                 await db.message_blocks.bulkPut(serializedBlocks);
             }
 
@@ -104,8 +104,7 @@ export class MessageService {
                 const _messageIndex = topic.messages.findIndex((m) => m.id === message.id);
                 const updatedMessages = [...topic.messages];
 
-                // 序列化消息对象
-                const serializedMessage = JSON.parse(JSON.stringify(message));
+                const serializedMessage = toJS(message);
 
                 if (_messageIndex !== -1) {
                     updatedMessages[_messageIndex] = serializedMessage;
@@ -132,7 +131,7 @@ export class MessageService {
         if (block) {
             try {
                 // 将 MobX 对象转换为纯 JavaScript 对象
-                const serializedBlock = JSON.parse(JSON.stringify(block));
+                const serializedBlock = toJS(block);
 
                 await db.message_blocks.put(serializedBlock);
                 logger.debug(`[saveBlockToDB] Successfully saved block ${blockId} to database`);
@@ -163,7 +162,7 @@ export class MessageService {
                 if (blocksToUpdate.length > 0) {
                     // 序列化 MobX 对象
                     const serializedBlocks = blocksToUpdate.map((block) =>
-                        JSON.parse(JSON.stringify(block)),
+                        toJS(block),
                     );
 
                     await db.message_blocks.bulkPut(serializedBlocks);
@@ -607,7 +606,7 @@ export class MessageService {
                         });
 
                         // 先同步将块保存到数据库
-                        await db.message_blocks.put(JSON.parse(JSON.stringify(interruptedBlock)));
+                        await db.message_blocks.put(toJS(interruptedBlock));
 
                         // 然后添加到消息的blocks引用中
                         await handleBlockTransition(interruptedBlock, MessageBlockType.INTERRUPTED);
@@ -627,9 +626,7 @@ export class MessageService {
                                         );
                                         if (messageIndex !== -1) {
                                             // 深度克隆确保所有属性都被正确序列化
-                                            const deepClonedMessage = JSON.parse(
-                                                JSON.stringify(updatedMessage),
-                                            );
+                                            const deepClonedMessage = toJS(updatedMessage);
                                             topic.messages[messageIndex] = deepClonedMessage;
                                         }
                                     });
@@ -1018,7 +1015,7 @@ export class MessageService {
                             // Save modified blocks to database asynchronously
                             Promise.all(
                                 modifiedBlocks.map((block) =>
-                                    db.message_blocks.put(JSON.parse(JSON.stringify(block))),
+                                    db.message_blocks.put(toJS(block)),
                                 ),
                             ).catch((error) => {
                                 logger.error(
@@ -1147,11 +1144,9 @@ export class MessageService {
                 }
             });
 
-            // 更新数据库 - 使用深度序列化确保对象完全可序列化
+            // 更新数据库
             const finalMessages = this.rootStore.messageStore.getMessagesForTopic(topicId);
-
-            // 使用 JSON.parse(JSON.stringify()) 进行深度清理，移除所有不可序列化的属性
-            const deepCleanedMessages = JSON.parse(JSON.stringify(finalMessages));
+            const deepCleanedMessages = toJS(finalMessages);
 
             await db.transaction('rw', db.topics, db.message_blocks, async () => {
                 await db.topics.update(topicId, { messages: deepCleanedMessages });
@@ -1164,18 +1159,15 @@ export class MessageService {
             const queue = getTopicQueue(topicId);
 
             // 深度清理robot对象，移除所有可能的循环引用和不可序列化属性
-            const cleanRobot = JSON.parse(
-                JSON.stringify({
+            const cleanRobot = {
                     id: robot.id,
                     name: robot.name,
                     prompt: robot.prompt,
                     type: robot.type,
                     ...(robot.icon && { icon: robot.icon }),
                     ...(robot.description && { description: robot.description }),
-                    // 提供空的topics数组以满足Robot类型要求
                     topics: [],
                     ...(robot.selectedTopicId && { selectedTopicId: robot.selectedTopicId }),
-                    // 只包含当前需要的model信息
                     ...(resetAssistantMsg.model && {
                         model: {
                             id: resetAssistantMsg.model.id,
@@ -1184,11 +1176,10 @@ export class MessageService {
                             group: resetAssistantMsg.model.group,
                         },
                     }),
-                }),
-            );
+                };
 
             // 也要深度清理resetAssistantMsg
-            const cleanResetMessage = JSON.parse(JSON.stringify(resetAssistantMsg));
+            const cleanResetMessage = toJS(resetAssistantMsg);
 
             queue.add(async () => {
                 await this.fetchAndProcessAssistantResponse(topicId, cleanRobot, cleanResetMessage);
@@ -1235,15 +1226,14 @@ export class MessageService {
         if (topicFromDB) {
             const messagesToSaveInDB = this.rootStore.messageStore.getMessagesForTopic(topicId);
             // 使用深度序列化确保对象完全可序列化
-            const deepCleanedMessages = JSON.parse(JSON.stringify(messagesToSaveInDB));
+            const deepCleanedMessages = toJS(messagesToSaveInDB);
             await db.topics.update(topicId, { messages: deepCleanedMessages });
         }
 
         const queue = getTopicQueue(topicId);
         for (const assistantMessage of assistantMessageStubs) {
             // 创建清理的robot对象以避免序列化问题
-            const cleanRobotForMention = JSON.parse(
-                JSON.stringify({
+            const cleanRobotForMention = {
                     id: robot.id,
                     name: robot.name,
                     prompt: robot.prompt,
@@ -1260,11 +1250,10 @@ export class MessageService {
                             group: assistantMessage.model.group,
                         },
                     }),
-                }),
-            );
+                };
 
             // 清理assistant消息对象
-            const cleanAssistantMessage = JSON.parse(JSON.stringify(assistantMessage));
+            const cleanAssistantMessage = toJS(assistantMessage);
 
             queue.add(async () => {
                 await this.fetchAndProcessAssistantResponse(

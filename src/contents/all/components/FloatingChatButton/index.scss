@@ -1,45 +1,59 @@
 .floating-chat-button {
     position: fixed !important;
-    bottom: 20px !important;
-    right: 10px !important;
-    width: 50px !important;
-    height: 50px !important;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
-    border-radius: 50% !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
-    cursor: pointer !important;
+    right: 10px;
+    bottom: 20px;
     z-index: 10000 !important;
     display: flex !important;
+    gap: 0 !important;
     align-items: center !important;
     justify-content: center !important;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    color: white !important;
-    border: none !important;
-    outline: none !important;
+    width: 50px !important;
+    height: 50px !important;
+    padding: 0 !important;
+    margin: 0 !important;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    font-size: 14px !important;
+    color: white !important;
+    cursor: pointer !important;
+    background: linear-gradient(135deg, rgb(102 126 234) 0%, rgb(118 75 162) 100%) !important;
+    border: none !important;
+    border-radius: 50% !important;
+    outline: none !important;
+    box-shadow: 0 4px 20px rgb(0 0 0 / 15%) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 
     &:hover,
     &.hovered {
+        box-shadow: 0 6px 25px rgb(0 0 0 / 20%) !important;
         transform: scale(1.1) !important;
-        box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2) !important;
     }
 
     &:active {
         transform: scale(0.95) !important;
     }
 
+    &.dragging {
+        cursor: grabbing !important;
+        box-shadow: 0 8px 30px rgb(0 0 0 / 25%) !important;
+        transition: none !important;
+        transform: scale(1.05) !important;
+    }
+
     .chat-icon {
         display: flex !important;
+        gap: 0 !important;
         align-items: center !important;
         justify-content: center !important;
         width: 100% !important;
         height: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
 
         svg {
             width: 22px !important;
             height: 22px !important;
             color: white !important;
-            filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1)) !important;
+            filter: drop-shadow(0 1px 2px rgb(0 0 0 / 10%)) !important;
         }
     }
 }
@@ -47,33 +61,37 @@
 /* 横向快捷键卡片样式 */
 .floating-shortcut-card {
     position: fixed !important;
-    bottom: 32px !important;
-    right: 70px !important;
-    background: white !important;
-    border-radius: 12px !important;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
-    padding: 0 !important;
     z-index: 10001 !important;
     display: flex !important;
+    gap: 0 !important;
     align-items: center !important;
-    animation: slideInFromRight 0.3s ease-out !important;
-    border: 1px solid rgba(0, 0, 0, 0.08) !important;
     min-height: 44px !important;
+    padding: 0 !important;
+    margin: 0 !important;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
+    color: #3c4043 !important;
+    background: white !important;
+    border: 1px solid rgb(0 0 0 / 8%) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 32px rgb(0 0 0 / 12%) !important;
+    animation: slide-in-from-right 0.3s ease-out !important;
 
     .shortcut-close-btn {
-        width: 28px !important;
-        height: 28px !important;
-        border-radius: 50% !important;
-        background: #f1f3f4 !important;
-        border: none !important;
-        cursor: pointer !important;
         display: flex !important;
+        gap: 0 !important;
         align-items: center !important;
         justify-content: center !important;
+        width: 28px !important;
+        height: 28px !important;
+        padding: 0 !important;
+        margin: 8px 0 8px 8px !important;
+        font-family: inherit !important;
         font-size: 16px !important;
         color: #5f6368 !important;
-        margin: 8px 0 8px 8px !important;
+        cursor: pointer !important;
+        background: #f1f3f4 !important;
+        border: none !important;
+        border-radius: 50% !important;
         transition: background-color 0.2s ease !important;
 
         &:hover {
@@ -83,19 +101,24 @@
 
     .shortcut-content {
         display: flex !important;
+        gap: 10px !important;
         align-items: center !important;
         padding: 8px 16px 8px 12px !important;
-        gap: 10px !important;
+        margin: 0 !important;
 
         .shortcut-icon {
-            width: 28px !important;
-            height: 28px !important;
-            border-radius: 50% !important;
-            background: #1976d2 !important;
             display: flex !important;
+            gap: 0 !important;
             align-items: center !important;
             justify-content: center !important;
+            width: 28px !important;
+            height: 28px !important;
+            padding: 0 !important;
+            margin: 0 !important;
             color: white !important;
+            background: #1976d2 !important;
+            border: none !important;
+            border-radius: 50% !important;
 
             svg {
                 width: 16px !important;
@@ -104,31 +127,31 @@
         }
 
         .shortcut-text {
+            font-family: inherit !important;
             font-size: 14px !important;
             font-weight: 500 !important;
             color: #3c4043 !important;
-            white-space: nowrap !important;
             letter-spacing: 0.25px !important;
+            white-space: nowrap !important;
         }
     }
 }
 
-@keyframes slideInFromRight {
+@keyframes slide-in-from-right {
     0% {
-        opacity: 0 !important;
-        transform: translateX(20px) !important;
+        opacity: 0;
+        transform: translateX(20px);
     }
+
     100% {
-        opacity: 1 !important;
-        transform: translateX(0) !important;
+        opacity: 1;
+        transform: translateX(0);
     }
 }
 
 /* 响应式设计 */
 @media (max-width: 768px) {
     .floating-chat-button {
-        bottom: 15px !important;
-        right: 8px !important;
         width: 45px !important;
         height: 45px !important;
 
@@ -139,20 +162,19 @@
     }
 
     .floating-shortcut-card {
-        bottom: 25px !important;
-        right: 60px !important;
         min-height: 40px !important;
 
         .shortcut-close-btn {
             width: 24px !important;
             height: 24px !important;
-            font-size: 14px !important;
+            padding: 0 !important;
             margin: 6px 0 6px 6px !important;
+            font-size: 14px !important;
         }
 
         .shortcut-content {
-            padding: 6px 12px 6px 8px !important;
             gap: 8px !important;
+            padding: 6px 12px 6px 8px !important;
 
             .shortcut-icon {
                 width: 24px !important;
@@ -175,6 +197,6 @@
 .floating-chat-button *,
 .floating-shortcut-card * {
     box-sizing: border-box !important;
-    margin: 0 !important;
     padding: 0 !important;
+    margin: 0 !important;
 }

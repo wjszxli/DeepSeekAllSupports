@@ -1,0 +1,6 @@
+allowBuilds:
+  '@swc/core': false
+  '@yutengjing/prettier-config': false
+  core-js: false
+  core-js-pure: false
+  electron: false

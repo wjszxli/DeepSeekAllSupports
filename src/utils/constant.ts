@@ -139,8 +139,6 @@ export const GIT_URL = 'https://github.com/wjszxli/AiAllSupport';
 
 export const MODIFY_HEADERS_RULE_ID = 1001;
 
-export const tags = ['think', 'reason', 'reasoning', 'thought'];
-
 // 检测是否为Firefox浏览器
 export const isFirefox = navigator.userAgent.includes('Firefox');
 
@@ -148,8 +146,6 @@ export const isFirefox = navigator.userAgent.includes('Firefox');
 export const SHORTCUTS_URL = isFirefox
     ? 'about:addons' // Firefox的扩展设置页面
     : 'chrome://extensions/shortcuts'; // Chrome的快捷键设置页面
-
-export const SEARCH_COUNT = 5;
 
 // 搜索引擎配置
 export const SEARCH_ENGINES = {

@@ -278,31 +278,61 @@ export function getModelForInterface(type: ConfigModelType) {
  */
 export const navigateToSettings = () => {
     try {
-        // 检查是否在 Chrome 扩展环境中
-        if (typeof chrome !== 'undefined' && chrome.runtime) {
-            // 在扩展环境中，打开设置页面
-            chrome.tabs
-                .create({
-                    url: chrome.runtime.getURL('options.html'),
-                })
-                .catch((error) => {
-                    console.error('Failed to open settings page:', error);
-                    // 如果创建新标签页失败，尝试在当前页面打开
-                    if (window && window.open) {
-                        window.open(chrome.runtime.getURL('options.html'), '_blank');
-                    }
-                });
-        } else if (typeof window !== 'undefined') {
-            // 在网页环境中，尝试导航到设置页面
-            if (window.location.hash) {
-                window.location.hash = '#/settings';
-            } else {
-                const settingsUrl = chrome?.runtime?.getURL?.('options.html') || '/options.html';
-                window.location.href = settingsUrl;
-            }
+        // 优先使用 Chrome 扩展标准的 openOptionsPage，它在 popup / content script / sidepanel 都可用
+        if (typeof chrome !== 'undefined' && chrome.runtime?.openOptionsPage) {
+            chrome.runtime.openOptionsPage(() => {
+                const error = chrome.runtime.lastError;
+                if (error) {
+                    console.error('Failed to open options page:', error);
+                    // fallback: 直接在新标签页打开 options.html
+                    openOptionsPageInNewTab();
+                }
+            });
+            return;
         }
+
+        // 如果 openOptionsPage 不可用（例如非扩展环境），尝试直接打开 options.html
+        openOptionsPageInNewTab();
     } catch (error) {
         console.error('Failed to navigate to settings:', error);
+    }
+};
+
+const openOptionsPageInNewTab = () => {
+    if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
+        const optionsUrl = chrome.runtime.getURL('options.html');
+
+        // 在 background / service worker 中可使用 tabs.create；content script 中 tabs.create 不可用，会静默失败
+        if (typeof chrome !== 'undefined' && chrome.tabs?.create) {
+            try {
+                chrome.tabs.create({ url: optionsUrl }, (tab) => {
+                    if (chrome.runtime.lastError) {
+                        console.error('Failed to create options tab:', chrome.runtime.lastError);
+                        windowOpenOptions(optionsUrl);
+                    } else if (!tab) {
+                        windowOpenOptions(optionsUrl);
+                    }
+                });
+                return;
+            } catch (error) {
+                console.error('chrome.tabs.create failed:', error);
+            }
+        }
+
+        windowOpenOptions(optionsUrl);
+    } else if (typeof window !== 'undefined') {
+        // 纯网页环境
+        if (window.location.hash) {
+            window.location.hash = '#/settings';
+        } else {
+            window.location.href = '/options.html';
+        }
+    }
+};
+
+const windowOpenOptions = (url: string) => {
+    if (typeof window !== 'undefined' && window.open) {
+        window.open(url, '_blank');
     }
 };
 

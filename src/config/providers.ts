@@ -1054,12 +1054,3 @@ export const PROVIDER_CONFIG = {
         },
     },
 };
-
-/**
- * Dear Jack,
- * I hope this email finds you well.We need to conduct a survey on protecting old houses in the ancient town. My plan is simple: we'll visit the
- * town next Wednesday morning, interview local residents about house conditions, and take photos for records. I suggest you handle interviews while i note key issues.
- * This approach ensures efficiency. Could you share your opinion on the schedule or any improvements? Your input is crucial for our success.
- * Your sincerely,
- * LiMing
- */
