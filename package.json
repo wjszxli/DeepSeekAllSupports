@@ -1,7 +1,7 @@
 {
     "name": "AiAllSupport",
     "displayName": "AiAllSupport",
-    "version": "1.0.13",
+    "version": "1.0.14",
     "browserslist": "Chrome >= 96",
     "private": true,
     "description": "support all servers in Ai",
