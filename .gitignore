@@ -1,5 +1,11 @@
 # custom
 extension
+extension-firefox
+
+# release / build artifacts
+*.zip
+*.xpi
+*.crx
 
 # Logs
 logs
