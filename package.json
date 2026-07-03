@@ -44,7 +44,8 @@
         "reinstall": "rimraf -rf ./node_modules && pnpm",
         "prepare": "husky install",
         "sync-translations": "ts-node scripts/syncTranslations.ts",
-        "manifest:set": "node scripts/setManifest.js --name \"AllAi：ChatGPT 侧边栏、小窗 + GTP-4o，Claude 3.5，DeepSeek & AI 工具\" --description \"support all servers in Ai\""
+        "manifest:set": "node scripts/setManifest.js --name \"AllAi：ChatGPT 侧边栏、小窗 + GTP-4o，Claude 3.5，DeepSeek & AI 工具\" --description \"support all servers in Ai\"",
+        "release": "node scripts/release.js"
     },
     "dependencies": {
         "@ant-design/icons": "5.6.1",
