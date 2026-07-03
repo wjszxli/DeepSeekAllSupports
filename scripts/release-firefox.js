@@ -194,6 +194,25 @@ function assertFirefoxManifest(manifest, geckoId) {
     if (problems.length) fail('Firefox manifest 校验未通过:\n  - ' + problems.join('\n  - '));
 }
 
+function assertJsFileSizes() {
+    const jsDir = path.join(FIREFOX_DIR, 'js');
+    if (!fs.existsSync(jsDir)) return;
+
+    const MAX_JS_BYTES = 4.5 * 1024 * 1024; // Firefox 非二进制文件解析上限约 5MB，留 0.5MB 余量
+    const oversized = [];
+    for (const file of fs.readdirSync(jsDir)) {
+        if (!file.endsWith('.js')) continue;
+        const full = path.join(jsDir, file);
+        const size = fs.statSync(full).size;
+        if (size > MAX_JS_BYTES) {
+            oversized.push(`${path.relative(ROOT, full)} (${fmtSize(size)})`);
+        }
+    }
+    if (oversized.length) {
+        fail('以下 JS 文件超过 4.5MB，Firefox 审核会拒绝：\n  - ' + oversized.join('\n  - '));
+    }
+}
+
 function assertZipLayout() {
     const { stdout } = spawnSync('unzip', ['-Z1', ZIP_PATH], { encoding: 'utf8' });
     const entries = (stdout || '').split('\n').map((s) => s.trim()).filter(Boolean);
@@ -229,12 +248,20 @@ function main() {
     logStep('复制 extension/ -> extension-firefox/');
     copyDir(CHROME_DIR, FIREFOX_DIR);
 
+    // 清理未在 Firefox manifest 中注册且超过解析限制的 content script 产物
+    const orphanChatWindows = path.join(FIREFOX_DIR, 'js', 'chat-windows.js');
+    if (fs.existsSync(orphanChatWindows)) {
+        fs.rmSync(orphanChatWindows);
+        console.log(`  已移除未使用的 ${path.relative(ROOT, orphanChatWindows)}`);
+    }
+
     logStep('改造 manifest.json 为 Firefox 版本');
     const chromeManifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
     const firefoxManifest = toFirefoxManifest(chromeManifest, args.geckoId);
     fs.writeFileSync(MANIFEST_PATH, `${JSON.stringify(firefoxManifest, null, PKG_INDENT)}\n`);
 
     assertFirefoxManifest(firefoxManifest, args.geckoId);
+    assertJsFileSizes();
 
     makeZip();
     assertZipLayout();

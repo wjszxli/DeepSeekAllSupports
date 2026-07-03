@@ -36,11 +36,30 @@ const prodConfig = merge(commonConfig, {
     ],
     optimization: {
         splitChunks: {
+            // Firefox 解析器对非二进制 JS 文件有 5MB 上限，留足余量强制拆包
+            maxSize: 4 * 1024 * 1024,
+            minSize: 50 * 1024,
+            chunks: 'all',
             cacheGroups: {
+                // 保持 react/react-dom 的高优先级 vendor
                 vendor: {
                     test: /[/\\]node_modules[/\\](react|react-dom)[/\\]/,
                     name: 'vendor',
                     chunks: 'all',
+                    priority: 30,
+                    reuseExistingChunk: true,
+                },
+                // 其它 node_modules 统一拆包，避免重复打进每个 entry
+                vendors: {
+                    test: /[/\\]node_modules[/\\]/,
+                    priority: 20,
+                    reuseExistingChunk: true,
+                },
+                // 项目内公共模块复用
+                common: {
+                    minChunks: 2,
+                    priority: 10,
+                    reuseExistingChunk: true,
                 },
             },
         },

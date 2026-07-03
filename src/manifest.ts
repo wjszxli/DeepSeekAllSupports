@@ -19,7 +19,8 @@ const manifest: Manifest.WebExtensionManifest = {
     web_accessible_resources: [
         {
             matches: ['<all_urls>'],
-            resources: ['icons/*', 'images/*', 'fonts/*','*.html'],
+            // 加入 js/* 让 content script 的 webpack 分片能被运行时加载（Firefox 5MB 解析限制）
+            resources: ['icons/*', 'images/*', 'fonts/*', '*.html', 'js/*'],
         },
     ],
     background: {
