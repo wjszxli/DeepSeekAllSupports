@@ -1,0 +1,46 @@
+[
+    {
+        "id": "vuln-0001",
+        "title": "Missing Sender Validation in chrome.runtime.onMessage Handler",
+        "severity": "medium",
+        "timestamp": "2026-07-29 02:48:23 UTC",
+        "description": "The `handleMessage` callback registered via `chrome.runtime.onMessage.addListener` in App.tsx does not validate the message sender. The function signature accepts only `message: any` and ignores Chrome's `sender` parameter (`chrome.runtime.MessageSender`). This allows any other Chrome extension that knows this extension's ID to send spoofed `providerSettingsUpdated` messages, triggering page reloads, fake notifications, and potential model configuration manipulation.",
+        "impact": "A malicious extension that discovers this extension's ID can:\n1. **Denial of Service**: Repeatedly trigger `window.location.reload()`, making the extension page unusable\n2. **Social Engineering**: Display fake error/info notifications to trick the user (e.g., fake error messages asking for credentials or inducing clicks)\n3. **Model Manipulation**: Potentially influence which AI model is selected for chat, altering the data flow of the extension",
+        "target": "/workspace/chat/App.tsx",
+        "technical_analysis": "The `handleMessage` function is registered as a `chrome.runtime.onMessage` listener within a `useEffect` hook (lines ~99-123 of App.tsx). Chrome's runtime messaging API provides a `sender: chrome.runtime.MessageSender` object as the second argument to listeners, which includes `sender.id` — the extension ID of the sender. However, the handler's signature is:\n\n```typescript\nconst handleMessage = async (message: any) => {\n```\n\nThis omits both `sender` and `sendResponse`. Consequently, **no sender verification is performed** before processing the `providerSettingsUpdated` action.\n\nIn Chrome's extension messaging architecture, `chrome.runtime.onMessage` receives messages from:\n- The extension's own components (background scripts, popups, options pages, content scripts)\n- **Other extensions** that call `chrome.runtime.sendMessage(targetExtensionId, message)` with this extension's ID\n\nChrome extension IDs are deterministic (derived from the signing public key) but discoverable. Any Chrome extension or externally connectable webpage that knows this extension's ID can exploit this handler.\n\nThe handler performs several state-changing actions:\n1. Updates the selected robot's model from `llmStore`\n2. Calls `window.location.reload()` — reloads the extension's entire page\n3. Shows `messageApi.info('提供商设置已更新')` or `messageApi.error('更新提供商设置失败')` — user-facing notifications\n\nNone of these actions are guarded by sender validation.",
+        "poc_description": "1. Identify the target extension's ID (visible in chrome://extensions, Chrome Web Store URL, or via content script)\n2. From any other extension's background script or popup, send: `chrome.runtime.sendMessage(targetExtensionId, {action: 'providerSettingsUpdated'})`\n3. Observe that the target extension's page reloads and a notification \"提供商设置已更新\" is displayed\n4. Repeat the message to trigger continuous page reloads, making the extension unusable",
+        "poc_script_code": "```javascript\n// This code runs in any extension that knows the target extension ID\nconst TARGET_EXTENSION_ID = 'abcdefghijklmnopabcdefghijklmnop'; // Replace with actual ID\n\n// Trigger page reload + fake notification (DoS)\nchrome.runtime.sendMessage(TARGET_EXTENSION_ID, {\n    action: 'providerSettingsUpdated'\n});\n\n// Repeated calls for sustained denial of service\nsetInterval(() => {\n    chrome.runtime.sendMessage(TARGET_EXTENSION_ID, {\n        action: 'providerSettingsUpdated'\n    });\n}, 500);\n```",
+        "remediation_steps": "Add sender validation as the first check inside the `handleMessage` callback:\n1. Accept the `sender` parameter in the function signature: `(message: any, sender: chrome.runtime.MessageSender)`\n2. Verify `sender.id === chrome.runtime.id` before processing any message\n3. Optionally use `chrome.runtime.onMessageExternal` if external messages are intended, but for internal extension communication, always validate `sender.id`",
+        "evidence": "The handler at App.tsx lines 99-123:\n\n```typescript\nuseEffect(() => {\n    const handleMessage = async (message: any) => {\n        if (message.action === 'providerSettingsUpdated') {\n            try {\n                if (rootStore.robotStore.selectedRobot) {\n                    const chatModel = rootStore.llmStore.chatModel;\n                    await rootStore.robotStore.updateSelectedRobot({\n                        ...rootStore.robotStore.selectedRobot,\n                        model: chatModel,\n                    });\n                    window.location.reload();  // ← Destructive action\n                }\n                messageApi.info('提供商设置已更新');\n            } catch (error) {\n                console.error('更新提供商设置时出错:', error);\n                messageApi.error('更新提供商设置失败');\n            }\n        }\n    };\n\n    chrome.runtime.onMessage.addListener(handleMessage);\n    // Note: no sender.id check, no sender verification at all\n\n    return () => {\n        chrome.runtime.onMessage.removeListener(handleMessage);\n    };\n}, []);\n```",
+        "assumptions": "Assumes an attacker controls another Chrome extension installed in the same browser, or can inject code into a page that has access to `chrome.runtime.sendMessage` (via `externally_connectable`). The extension ID is discoverable through the Chrome Web Store URL, extension update manifests, content scripts, or chrome://extensions page.",
+        "fix_effort": "trivial",
+        "cvss": 6.5,
+        "cvss_breakdown": {
+            "attack_vector": "N",
+            "attack_complexity": "L",
+            "privileges_required": "N",
+            "user_interaction": "N",
+            "scope": "U",
+            "confidentiality": "N",
+            "integrity": "L",
+            "availability": "L"
+        },
+        "endpoint": "App.tsx",
+        "method": "onMessage",
+        "cwe": "CWE-862",
+        "code_locations": [
+            {
+                "file": "App.tsx",
+                "start_line": 99,
+                "end_line": 106,
+                "label": "Unvalidated runtime message listener registration",
+                "fix_before": "    useEffect(() => {\n        const handleMessage = async (message: any) => {\n            if (message.action === 'providerSettingsUpdated') {",
+                "fix_after": "    useEffect(() => {\n        const handleMessage = async (\n            message: any,\n            sender: chrome.runtime.MessageSender,\n        ) => {\n            // CRITICAL: Only accept messages from our own extension\n            if (sender.id !== chrome.runtime.id) {\n                return;\n            }\n            if (message.action === 'providerSettingsUpdated') {"
+            }
+        ],
+        "fix_pr_body": "## Summary\nAdds sender validation to the `chrome.runtime.onMessage` handler to prevent other extensions from sending spoofed `providerSettingsUpdated` messages.\n\n## Why\nThe handler previously accepted messages from any sender (any extension that knows this extension's ID) and would blindly call `window.location.reload()`, show notifications, and update robot configuration. Since `chrome.runtime.onMessage` receives messages from all extensions that call `chrome.runtime.sendMessage(thisExtensionId, ...)`, any malicious extension could exploit this.\n\n## Changes\n- Accepts the `sender` parameter (`chrome.runtime.MessageSender`) in the listener callback\n- Adds `sender.id !== chrome.runtime.id` guard at the top of the handler\n- Unchanged message processing logic — the only change is the authorization check at the entry point",
+        "finding_class": "dynamic",
+        "agent_id": "bbdc51db",
+        "agent_name": "Chrome Extension Security Agent"
+    }
+]

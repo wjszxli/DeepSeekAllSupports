@@ -1,0 +1,67 @@
+{
+    "bb0320f6": {
+        "9dfb0c": {
+            "title": "Analyze XSS attack surface (markdown rendering, innerHTML, DOMPurify)",
+            "description": "Review all code paths where user-controlled data reaches innerHTML/dangerouslySetInnerHTML, including the tempDiv.innerHTML in ChatBody",
+            "priority": "high",
+            "status": "pending",
+            "created_at": "2026-07-29T02:46:03.272072+00:00",
+            "updated_at": "2026-07-29T02:46:03.272072+00:00",
+            "completed_at": null
+        },
+        "753f1e": {
+            "title": "Analyze Chrome extension specific security (message passing, storage, permissions)",
+            "description": "Review chrome.runtime.onMessage, chrome.tabs.sendMessage, and extension storage patterns",
+            "priority": "high",
+            "status": "pending",
+            "created_at": "2026-07-29T02:46:03.272095+00:00",
+            "updated_at": "2026-07-29T02:46:03.272095+00:00",
+            "completed_at": null
+        },
+        "3736ae": {
+            "title": "Analyze XSS attack surface (markdown rendering, innerHTML, DOMPurify)",
+            "description": null,
+            "priority": "high",
+            "status": "done",
+            "created_at": "2026-07-29T02:46:06.039569+00:00",
+            "updated_at": "2026-07-29T02:48:53.787259+00:00",
+            "completed_at": "2026-07-29T02:48:53.787259+00:00"
+        },
+        "836b98": {
+            "title": "Analyze Chrome extension specific security (message passing, storage, permissions)",
+            "description": null,
+            "priority": "high",
+            "status": "done",
+            "created_at": "2026-07-29T02:46:06.039593+00:00",
+            "updated_at": "2026-07-29T02:48:53.787259+00:00",
+            "completed_at": "2026-07-29T02:48:53.787259+00:00"
+        },
+        "66880e": {
+            "title": "Check for hardcoded secrets and API keys",
+            "description": null,
+            "priority": "normal",
+            "status": "done",
+            "created_at": "2026-07-29T02:46:06.039605+00:00",
+            "updated_at": "2026-07-29T02:49:09.560903+00:00",
+            "completed_at": "2026-07-29T02:49:09.560903+00:00"
+        },
+        "be4bb8": {
+            "title": "Analyze input validation and injection patterns",
+            "description": null,
+            "priority": "normal",
+            "status": "done",
+            "created_at": "2026-07-29T02:46:06.039615+00:00",
+            "updated_at": "2026-07-29T02:49:09.560903+00:00",
+            "completed_at": "2026-07-29T02:49:09.560903+00:00"
+        },
+        "2f39ec": {
+            "title": "Review auth and access control patterns",
+            "description": null,
+            "priority": "low",
+            "status": "done",
+            "created_at": "2026-07-29T02:46:06.039625+00:00",
+            "updated_at": "2026-07-29T02:49:09.560903+00:00",
+            "completed_at": "2026-07-29T02:49:09.560903+00:00"
+        }
+    }
+}

@@ -1,20 +1,13 @@
 {
     "typescript.tsdk": "./node_modules/typescript/lib",
     // stylelint 扩展自身的校验就够了
-    "stylelint.validate": [
-        "css",
-        "less",
-        "scss"
-    ],
+    "stylelint.validate": ["css", "less", "scss"],
     "css.validate": false,
     "less.validate": false,
     "scss.validate": false,
     "json.schemas": [
         {
-            "fileMatch": [
-                "/**/src/manifest.dev.json",
-                "/**/src/manifest.prod.json"
-            ],
+            "fileMatch": ["/**/src/manifest.dev.json", "/**/src/manifest.prod.json"],
             "url": "http://json.schemastore.org/chrome-manifest"
         }
     ],
@@ -78,7 +71,7 @@
         "uuidv",
         "volcengine",
         "voyageai",
-        "wangjunsheng",
+        "huasheng",
         "xirang",
         "Zhinao",
         "zhipu"

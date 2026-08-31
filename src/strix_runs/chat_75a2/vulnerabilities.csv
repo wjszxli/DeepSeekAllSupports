@@ -1,0 +1,2 @@
+id,title,severity,timestamp,file
+vuln-0001,Missing Sender Validation in chrome.runtime.onMessage Handler,MEDIUM,2026-07-29 02:48:23 UTC,vulnerabilities/vuln-0001.md
