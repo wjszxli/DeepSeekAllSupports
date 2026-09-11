@@ -37,6 +37,7 @@
         "build": "cross-env NODE_ENV=production ts-node --files ./server/build.ts",
         "build:analyze": "pnpm build --analyze",
         "test": "pnpm build",
+        "test:orcarouter": "cross-env TS_NODE_PROJECT=tests/tsconfig.json node --require ts-node/register --test tests/orcarouter/*.test.ts",
         "lint": "pnpm lint:es && pnpm lint:style",
         "lint:es": "eslint -c .eslintrc.js --ext .ts,.tsx  ./src/**/*.tsx ./{src,server}/**/*.ts",
         "lint:style": "stylelint --config .stylelintrc.json src/**/*.{css,less,scss}",

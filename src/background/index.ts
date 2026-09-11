@@ -2,13 +2,23 @@ import { initLogger, Logger } from '@/utils';
 import { MODIFY_HEADERS_RULE_ID, PROVIDERS_DATA } from '@/utils/constant';
 import storage from '@/utils/storage';
 import { performSearchInBackground } from './search';
+import {
+    ORCA_PROVIDER_IDS,
+    isOrcaRouterProvider,
+    originsForProvider,
+    resolveCredentialProviderId,
+} from '@/orcarouter/provider';
+import { discoverOrcaCatalog } from '@/orcarouter/catalog';
+import orcaRouterStore from '@/orcarouter/store';
+import llmStore from '@/store/llm';
+import { sanitizeErrorText } from '@/orcarouter/credentials';
 
 const logger = new Logger('background');
 
 initLogger().then((config) => {
     logger.debug('Logger initialized with config', config);
-}).catch((err) => {
-    console.error('Failed to initialize logger config:', err);
+}).catch((error) => {
+    console.error('Failed to initialize logger config:', error);
 });
 
 chrome.declarativeNetRequest.updateDynamicRules(
@@ -106,6 +116,65 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
     if (request.action === 'setStorage') {
         storage.set(request.key, request.value).then(() => sendResponse({ success: true }));
+        return true;
+    }
+
+    // OrcaRouter model discovery runs here, in the extension's service worker.
+    //
+    // The options page never holds the API key: it asks for models and receives
+    // only minimal metadata (id, display name, capability summary). The key is
+    // read from the project's existing secret store and used only for the
+    // outbound Bearer request from this context.
+    if (request.action === 'orcaListModels') {
+        const provider = llmStore.providers.find((item) => item.id === request.providerId);
+        if (!provider || !isOrcaRouterProvider(provider)) {
+            sendResponse({ success: false, error: 'Unknown OrcaRouter provider' });
+            return true;
+        }
+
+        const credentialProviderId = resolveCredentialProviderId(provider);
+        const credential = orcaRouterStore.read(credentialProviderId);
+
+        discoverOrcaCatalog({
+            origins: originsForProvider(provider),
+            apiBaseUrl: provider.apiHost,
+            apiKey: credential?.apiKey ?? null,
+            // The full catalog is returned; the page applies the capability
+            // filter for the input type it is about to send.
+            capability: 'all',
+        })
+            .then((result) => {
+                // Cache the full catalog so a capability re-filter needs no
+                // second network call.
+                orcaRouterStore.saveCatalog(provider.id, { ...result, models: result.models });
+                sendResponse({
+                    success: true,
+                    source: result.source,
+                    degradedReason: result.degradedReason,
+                    truncated: result.truncated,
+                    // Metadata only — the key never crosses this boundary back.
+                    // Metadata only — no key, no origin, nothing secret. The
+                    // page filters these locally for the current input type.
+                    models: result.models.map((model) => ({ ...model, provider: provider.id })),
+                });
+            })
+            .catch((error) => {
+                sendResponse({ success: false, error: sanitizeErrorText(error?.message ?? error) });
+            });
+
+        return true;
+    }
+
+    // Terminal reauthentication: mark exactly the credential generation the
+    // rejected request used, so a late 401 cannot poison a newer login.
+    if (request.action === 'orcaMarkNeedsReauth') {
+        const changed = orcaRouterStore.markNeedsReauth(request.providerId, request.generation);
+        sendResponse({ success: true, changed });
+        return true;
+    }
+
+    if (request.action === 'orcaCredentialProviders') {
+        sendResponse({ success: true, providerIds: [...ORCA_PROVIDER_IDS] });
         return true;
     }
 

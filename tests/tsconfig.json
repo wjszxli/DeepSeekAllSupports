@@ -1,0 +1,13 @@
+{
+    "extends": "../src/tsconfig.json",
+    "compilerOptions": {
+        "module": "CommonJS",
+        "moduleResolution": "node",
+        "noUnusedLocals": false,
+        "noUnusedParameters": false,
+        "noImplicitReturns": false,
+        "types": ["node"],
+        "baseUrl": "..",
+        "paths": { "@/*": ["./src/*"] }
+    }
+}
