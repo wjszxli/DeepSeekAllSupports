@@ -1,15 +1,32 @@
 import { Avatar, Button, Form, Input, message, Modal, Select, Space, Card, Typography } from 'antd';
-import React, { useState, useEffect } from 'react';
-import { GlobalOutlined, KeyOutlined, CodeOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+    GlobalOutlined,
+    KeyOutlined,
+    CodeOutlined,
+    CheckCircleOutlined,
+    ReloadOutlined,
+} from '@ant-design/icons';
 
 import { t } from '@/locales/i18n';
-import { requiresApiKey } from '@/utils';
-import { Provider } from '@/types';
+import { requiresApiKey , getModelGroupOptions } from '@/utils';
+import type { Provider, Model } from '@/types';
 import { getProviderLogo, PROVIDER_CONFIG } from '@/config/providers';
 import LangChainService from '@/langchain/services/LangChainService';
 import { getProviderName } from '@/utils/i18n';
-import { getModelGroupOptions } from '@/utils';
 import llmStore from '@/store/llm';
+import OrcaRouterAuthModal from '../OrcaRouterAuthModal';
+import {
+    ORCA_OAUTH_PROVIDER_ID,
+    ORCA_PROVIDER_ID,
+} from '@/orcarouter/constants';
+import {
+    buildModelOptions,
+    isOrcaRouterProvider,
+    requestModelsForProvider,
+    resolveCatalogState,
+} from '@/orcarouter/provider';
+import type { OrcaInputModality, OrcaModel } from '@/orcarouter/catalog';
 
 const { Text } = Typography;
 
@@ -30,11 +47,71 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
     const [testing, setTesting] = useState<boolean>(false);
     const currentProvider = llmStore.providers.find((p: Provider) => p.id === selectProviderId);
     const [form] = Form.useForm();
+    const [, setDirty] = useState<boolean>(false);
+
+    // OrcaRouter only: the model list is discovered from the live catalog rather
+    // than typed in, so it lives in state instead of the provider's static list.
+    // The full discovered catalog plus the input type currently selected. The
+    // options handed to the model selector are derived from both, so changing
+    // either re-filters the list without another network call.
+    const [orcaCatalog, setOrcaCatalog] = useState<OrcaModel[]>([]);
+    const [orcaModality, setOrcaModality] = useState<OrcaInputModality>('text');
+    const [orcaModels, setOrcaModels] = useState<Model[]>([]);
+    const [orcaCatalogState, setOrcaCatalogState] = useState<string>('');
+    const [orcaCatalogDegraded, setOrcaCatalogDegraded] = useState<boolean>(false);
+    const [orcaLoadingModels, setOrcaLoadingModels] = useState<boolean>(false);
 
     const needsApiKey = currentProvider ? requiresApiKey(currentProvider) : true;
+    const isOrca = isOrcaRouterProvider(currentProvider);
 
+    const siblingOrcaProvider = React.useMemo(() => {
+        if (!currentProvider || !isOrca) return null;
+        const otherId =
+            currentProvider.id === ORCA_PROVIDER_ID ? ORCA_OAUTH_PROVIDER_ID : ORCA_PROVIDER_ID;
+        return llmStore.providers.find((p) => p.id === otherId) ?? null;
+    }, [currentProvider, isOrca]);
+
+    /**
+     * Load the model list for the current provider.
+     *
+     * OrcaRouter is special: its list comes from the live catalog for the
+     * configured origin and the user's own key, filtered to the chat capability,
+     * so it is kept in component state and never hand-maintained. Every other
+     * provider keeps its existing behaviour.
+     */
     const initializeSelectedModels = async () => {
-        if (currentProvider && (currentProvider.models.length === 0 || !needsApiKey)) {
+        if (!currentProvider) return;
+
+        if (isOrca) {
+            setOrcaLoadingModels(true);
+            try {
+                const { models: catalog, source, degradedReason } =
+                    await requestModelsForProvider(currentProvider, 'all');
+                setOrcaCatalog(catalog);
+                setOrcaCatalogState(resolveCatalogState(source, catalog.length, degradedReason));
+                setOrcaCatalogDegraded(source !== 'live');
+
+                const models = buildModelOptions(catalog, 'vision', orcaModality, currentProvider.id);
+                setOrcaModels(models);
+
+                // A previously stored selection must be re-validated against the
+                // freshly discovered list before it is restored, or cleared.
+                const storedId = currentProvider.selectedModel?.id ?? null;
+                if (storedId && !models.some((model) => model.id === storedId)) {
+                    const fallbackModel = models[0] ?? null;
+                    llmStore.updateProvider({ ...currentProvider, models, selectedModel: fallbackModel ?? undefined });
+                    form.setFieldsValue({ model: fallbackModel?.id });
+                    message.warning(t('orcarouterModelCleared'));
+                } else {
+                    llmStore.updateProvider({ ...currentProvider, models });
+                }
+            } finally {
+                setOrcaLoadingModels(false);
+            }
+            return;
+        }
+
+        if (currentProvider.models.length === 0 || !needsApiKey) {
             const models = await LangChainService.getModels({
                 ...currentProvider,
                 apiKey: currentProvider.apiKey || 'xxx',
@@ -49,7 +126,46 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
         }
     };
 
+    /**
+     * Catalog-aware reload triggered by the OrcaRouter panel.
+     *
+     * The options that reach the model selector are substituted here, so an
+     * incompatible selection is cleared at the moment the list changes rather
+     * than being caught later by a send-time guard.
+     */
+    const handleOrcaCatalogChange = useCallback(
+        (models: Model[]) => {
+            setOrcaModels(models);
+            const storedId = currentProvider?.selectedModel?.id ?? null;
+            if (storedId && !models.some((model) => model.id === storedId)) {
+                const fallbackModel = models[0] ?? null;
+                if (currentProvider) {
+                    llmStore.updateProvider({
+                        ...currentProvider,
+                        models,
+                        selectedModel: fallbackModel ?? undefined,
+                    });
+                }
+                form.setFieldsValue({ model: fallbackModel?.id });
+                message.warning(t('orcarouterModelCleared'));
+            }
+        },
+        [currentProvider, form],
+    );
+
+    /** Input type changed: re-derive options from the cached catalog and reconcile. */
+    const handleOrcaModalityChange = useCallback(
+        (modality: OrcaInputModality) => {
+            setOrcaModality(modality);
+            if (!currentProvider || orcaCatalog.length === 0) return;
+            const models = buildModelOptions(orcaCatalog, 'vision', modality, currentProvider.id);
+            handleOrcaCatalogChange(models);
+        },
+        [currentProvider, orcaCatalog, handleOrcaCatalogChange],
+    );
+
     useEffect(() => {
+        setDirty(false);
         if (isModalOpen && currentProvider) {
             initializeSelectedModels();
             let defaultModelId = currentProvider.selectedModel?.id;
@@ -125,9 +241,11 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
         llmStore.updateProvider({ ...currentProvider, apiHost });
     };
 
+    const availableModels = isOrca ? orcaModels : (currentProvider?.models ?? []);
+
     const onModelChange = (modelId: string) => {
         if (!currentProvider) return;
-        const model = currentProvider.models.find((m) => m.id === modelId);
+        const model = availableModels.find((m) => m.id === modelId);
         if (model) {
             llmStore.updateProvider({
                 ...currentProvider,
@@ -144,13 +262,18 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
             return;
         }
 
-        if (currentProvider && needsApiKey && !apiKey) {
+        // The PKCE entry satisfies the credential requirement with a key it
+        // obtained itself, so an empty paste field is not an error there.
+        const requiresPastedKey = needsApiKey && !isOrca;
+        if (currentProvider && requiresPastedKey && !apiKey) {
             message.error(t('pleaseEnterApiKey'));
             return;
         }
 
         if (currentProvider && selectedModelId) {
-            const model = currentProvider.models.find((m) => m.id === selectedModelId);
+            const model = (isOrca ? orcaModels : currentProvider.models).find(
+                (m) => m.id === selectedModelId,
+            );
             if (model) {
                 llmStore.updateProvider({
                     ...currentProvider,
@@ -188,18 +311,21 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
     return (
         <Modal
             title={
-                currentProvider && (
-                    <Space>
+                currentProvider ? <Space>
                         <Avatar size="small" src={getProviderLogo(currentProvider.id)} />
                         {`配置 ${getProviderName(currentProvider)}`}
-                    </Space>
-                )
+                    </Space> : null
             }
             open={isModalOpen}
             onOk={handleOk}
             onCancel={() => {
                 onCancel();
                 setApiKeyValidated(false);
+                setDirty(false);
+                setOrcaModels([]);
+                setOrcaCatalog([]);
+                setOrcaModality('text');
+                setOrcaCatalogState('');
             }}
             width={600}
             footer={[
@@ -227,7 +353,26 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
             ]}
         >
             <Form form={form} layout="vertical" requiredMark={false}>
-                {!currentProvider || needsApiKey ? (
+                {isOrca && currentProvider ? (
+                    // OrcaRouter exposes both credential choices here instead of a
+                    // bare key field. The model selector below is fed from the
+                    // discovered catalog, never from a free-text field.
+                    <OrcaRouterAuthModal
+                        provider={currentProvider}
+                        siblingProvider={siblingOrcaProvider}
+                        inputModality={orcaModality}
+                        onInputModalityChange={handleOrcaModalityChange}
+                        apiKeyDraft={(form.getFieldValue('apiKey') as string) || ''}
+                        onApiKeyDraftChange={(value) => {
+                            form.setFieldsValue({ apiKey: value });
+                            onUpdateApiHost();
+                        }}
+                        onModelCatalogChange={handleOrcaCatalogChange}
+                        onDirty={() => setDirty(true)}
+                    />
+                ) : null}
+
+                {!isOrca && (!currentProvider || needsApiKey) ? (
                     <Form.Item
                         label={
                             <Space>
@@ -252,8 +397,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
                                 placeholder="您的密钥存储在您本地，请放心填写" 
                             />
                         </Form.Item>
-                        {apiKeyWebsite && (
-                            <Button
+                        {apiKeyWebsite ? <Button
                                 icon={<KeyOutlined />}
                                 type="link"
                                 href={apiKeyWebsite}
@@ -261,8 +405,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
                                 style={{ textAlign: 'left', padding: 0 }}
                             >
                                 获取 API 密钥
-                            </Button>
-                        )}
+                            </Button> : null}
                     </Form.Item>
                 ) : null}
 
@@ -291,14 +434,60 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
                     rules={[{ required: true, message: '请选择默认模型' }]}
                 >
                     <Select
+                        data-testid="provider-model-select"
+                        // Scoped so the model overlay is clearly delineated
+                        // against the settings panel behind it.
+                        popupClassName="provider-model-dropdown"
                         placeholder="请选择默认模型"
-                        options={getModelGroupOptions(currentProvider?.models)}
+                        showSearch
+                        optionFilterProp="label"
+                        loading={isOrca ? orcaLoadingModels : undefined}
+                        notFoundContent={
+                            isOrca && !orcaLoadingModels ? t('orcarouterCatalogEmpty') : undefined
+                        }
+                        options={getModelGroupOptions(availableModels)}
                         onChange={onModelChange}
                     />
                 </Form.Item>
+                {isOrca ? <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <ReloadOutlined
+                            spin={orcaLoadingModels}
+                            onClick={async () => {
+                                if (!currentProvider) return;
+                                setOrcaLoadingModels(true);
+                                try {
+                                    const { models: catalog, source, degradedReason } =
+                                        await requestModelsForProvider(currentProvider, 'all');
+                                    setOrcaCatalog(catalog);
+                                    setOrcaModels(
+                                        buildModelOptions(
+                                            catalog,
+                                            'vision',
+                                            orcaModality,
+                                            currentProvider.id,
+                                        ),
+                                    );
+                                    setOrcaCatalogState(
+                                        resolveCatalogState(source, catalog.length, degradedReason),
+                                    );
+                                    setOrcaCatalogDegraded(source !== 'live');
+                                } finally {
+                                    setOrcaLoadingModels(false);
+                                }
+                            }}
+                        />
+                        <Text
+                            data-testid="provider-catalog-state"
+                            style={{ fontSize: 12, color: orcaCatalogDegraded ? '#faad14' : '#52c41a' }}
+                        >
+                            {orcaLoadingModels
+                                ? t('orcarouterCatalogLoading')
+                                : orcaCatalogState || t('orcarouterCatalogEmpty')}
+                        </Text>
+                    </div> : null}
+
                 <div>
-                    {officialWebsite && (
-                        <Button
+                    {officialWebsite ? <Button
                             icon={<GlobalOutlined />}
                             type="link"
                             href={officialWebsite}
@@ -306,10 +495,8 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
                             style={{ textAlign: 'left' }}
                         >
                             官网
-                        </Button>
-                    )}
-                    {docs && (
-                        <Button
+                        </Button> : null}
+                    {docs ? <Button
                             icon={<CodeOutlined />}
                             type="link"
                             href={docs}
@@ -317,10 +504,8 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
                             style={{ textAlign: 'left' }}
                         >
                             官方文档
-                        </Button>
-                    )}
-                    {modelsPage && (
-                        <Button
+                        </Button> : null}
+                    {modelsPage ? <Button
                             icon={<GlobalOutlined />}
                             type="link"
                             href={modelsPage}
@@ -328,12 +513,10 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
                             style={{ textAlign: 'left' }}
                         >
                             模型列表
-                        </Button>
-                    )}
+                        </Button> : null}
                 </div>
 
-                {apiKeyValidated && (
-                    <Card
+                {apiKeyValidated ? <Card
                         style={{
                             marginBottom: 16,
                             backgroundColor: '#f6ffed',
@@ -345,8 +528,7 @@ const ConfigModal: React.FC<ConfigModalProps> = ({
                             <CheckCircleOutlined style={{ color: '#52c41a' }} />
                             <Text>API 连接测试成功</Text>
                         </Space>
-                    </Card>
-                )}
+                    </Card> : null}
             </Form>
         </Modal>
     );

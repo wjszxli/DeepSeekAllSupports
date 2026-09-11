@@ -32,6 +32,7 @@ import OcoolAiProviderLogo from '@/assets/providers/ocoolai.png';
 import OllamaProviderLogo from '@/assets/providers/ollama.png';
 import OpenAiProviderLogo from '@/assets/providers/openai.png';
 import OpenRouterProviderLogo from '@/assets/providers/openrouter.png';
+import OrcaRouterProviderLogo from '@/assets/providers/orcarouter.png';
 import PerplexityProviderLogo from '@/assets/providers/perplexity.png';
 import PPIOProviderLogo from '@/assets/providers/ppio.png';
 import QiniuProviderLogo from '@/assets/providers/qiniu.png';
@@ -58,6 +59,8 @@ const PROVIDER_LOGO_MAP = {
     'lmstudio': LMStudioProviderLogo,
     'moonshot': MoonshotProviderLogo,
     'openrouter': OpenRouterProviderLogo,
+    'orcarouter': OrcaRouterProviderLogo,
+    'orcarouter-oauth': OrcaRouterProviderLogo,
     'baichuan': BaichuanProviderLogo,
     'dashscope': BailianProviderLogo,
     'modelscope': ModelScopeProviderLogo,
@@ -270,6 +273,33 @@ export const INITIAL_PROVIDERS: Provider[] = [
         models: SYSTEM_MODELS.openrouter,
         isSystem: true,
         enabled: false,
+    },
+    // Two explicit authentication choices for one gateway. Both share the
+    // inference adapter, base URL, and model namespace; only credential
+    // acquisition differs. Keeping them as separate entries keeps "which key am
+    // I using" and "how do I sign out" unambiguous.
+    {
+        id: 'orcarouter',
+        name: 'OrcaRouter - API',
+        type: 'openai',
+        apiKey: '',
+        apiHost: 'https://api.orcarouter.ai/v1',
+        models: SYSTEM_MODELS.orcarouter ?? [],
+        isSystem: true,
+        enabled: true,
+        requiresApiKey: true,
+    },
+    {
+        id: 'orcarouter-oauth',
+        name: 'OrcaRouter - Auth',
+        type: 'openai',
+        apiKey: '',
+        apiHost: 'https://api.orcarouter.ai/v1',
+        models: SYSTEM_MODELS['orcarouter-oauth'] ?? [],
+        isSystem: true,
+        enabled: false,
+        requiresApiKey: false,
+        notes: 'Authorize with your OrcaRouter account (OAuth 2.0 + PKCE).',
     },
     {
         id: 'ppio',
@@ -835,6 +865,33 @@ export const PROVIDER_CONFIG = {
             apiKey: 'https://openrouter.ai/settings/keys',
             docs: 'https://openrouter.ai/docs/quick-start',
             models: 'https://openrouter.ai/docs/models',
+        },
+    },
+    // OrcaRouter is an OpenAI-compatible AI gateway. Authentication and
+    // inference use *different* origins: keys are obtained on
+    // www.orcarouter.ai, inference runs against api.orcarouter.ai/v1.
+    'orcarouter': {
+        api: {
+            url: 'https://api.orcarouter.ai/v1',
+        },
+        websites: {
+            official: 'https://www.orcarouter.ai/',
+            // Where the user creates a key and can revoke every key issued to
+            // this app in one click.
+            apiKey: 'https://www.orcarouter.ai/console/authorized-apps',
+            // The catalog browser. The machine-readable catalog is
+            // `GET https://api.orcarouter.ai/v1/models`.
+            models: 'https://www.orcarouter.ai/models',
+        },
+    },
+    'orcarouter-oauth': {
+        api: {
+            url: 'https://api.orcarouter.ai/v1',
+        },
+        websites: {
+            official: 'https://www.orcarouter.ai/',
+            apiKey: 'https://www.orcarouter.ai/console/authorized-apps',
+            models: 'https://www.orcarouter.ai/models',
         },
     },
     'groq': {

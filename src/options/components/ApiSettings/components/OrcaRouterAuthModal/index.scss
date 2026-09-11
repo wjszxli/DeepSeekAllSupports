@@ -1,0 +1,113 @@
+.orca-auth {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.orca-auth__intro {
+    margin: 0;
+    color: rgba(0, 0, 0, 0.65);
+    font-size: 13px;
+    line-height: 20px;
+}
+
+.orca-auth__choices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.orca-auth__choice {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid #d9d9d9;
+    border-radius: 8px;
+    background: #fafafa;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.orca-auth__choice--selected {
+    border-color: #1677ff;
+    background: #f0f7ff;
+    box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.12);
+}
+
+.orca-auth__choice-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+.orca-auth__choice-desc {
+    color: rgba(0, 0, 0, 0.55);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.orca-auth__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.orca-auth__hint {
+    color: rgba(0, 0, 0, 0.45);
+    font-size: 12px;
+}
+
+.orca-auth__status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: #f6ffed;
+    border: 1px solid #b7eb8f;
+    font-size: 12px;
+}
+
+.orca-auth__status--warning {
+    background: #fffbe6;
+    border-color: #ffe58f;
+}
+
+.orca-auth__authorize-url {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+}
+
+.orca-auth__catalog {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.55);
+}
+
+.orca-auth__catalog-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #52c41a;
+    flex: none;
+}
+
+.orca-auth__catalog-dot--degraded {
+    background: #faad14;
+}
+
+/**
+ * The model picker's overlay, scoped by the `popupClassName` on the provider
+ * model `Select`. The settings panel behind it is dense and light, so the
+ * overlay gets an explicit border on top of antd's default shadow to keep the
+ * list edge unambiguous.
+ */
+.provider-model-dropdown {
+    border: 1px solid rgba(0, 0, 0, 0.18) !important;
+}

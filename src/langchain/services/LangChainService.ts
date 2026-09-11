@@ -10,6 +10,7 @@ import { getModelForInterface, navigateToSettings, requiresApiKey } from '@/util
 import llmStore from '@/store/llm';
 import type { RootStore } from '@/store';
 import { Logger } from '@/utils/logger';
+import { discoverModelsForProvider, isOrcaRouterProvider } from '@/orcarouter/provider';
 
 const logger = new Logger('LangChainService');
 
@@ -178,6 +179,13 @@ export default class LangChainService {
     }
 
     async getModels(provider: Provider): Promise<Model[]> {
+        // OrcaRouter's catalog is discovered through its own capability-aware
+        // path, so the two auth entries cannot drift from each other or from the
+        // OpenAI request path.
+        if (isOrcaRouterProvider(provider)) {
+            const result = await discoverModelsForProvider(provider);
+            return result.models;
+        }
         return this.provider.models(provider);
     }
 
@@ -225,6 +233,10 @@ export default class LangChainService {
     }
 
     static async getModels(provider: Provider, rootStore?: RootStore): Promise<Model[]> {
+        if (isOrcaRouterProvider(provider)) {
+            const result = await discoverModelsForProvider(provider);
+            return result.models;
+        }
         const langChainService = new LangChainService(provider, rootStore);
         return langChainService.getModels(provider);
     }

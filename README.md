@@ -20,6 +20,41 @@ This extension is compatible with multiple DeepSeek API providers, including:
 > - [Baidu Cloud](https://console.bce.baidu.com/iam/#/iam/apikey/list) DeepSeek API
 > - [Alibaba Cloud](https://bailian.console.aliyun.com/?apiKey=1#/api-key) DeepSeek API
 > - [Local](https://ollama.com/) DeepSeek API
+> - [OrcaRouter](https://www.orcarouter.ai) — OpenAI-compatible AI gateway
+
+### OrcaRouter
+
+OrcaRouter is an OpenAI-compatible AI gateway built for both models and agents,
+with adaptive routing, automatic failover, zero-markup inference,
+observability, guardrails, and agent-tool governance. It also runs
+gateway-level, zero-trust security for AI agents on the same endpoint —
+screening every prompt and response and governing every tool call on a
+default-deny basis, with no application code changes.
+
+Two provider entries are available, each with its own way of getting a
+credential:
+
+| Entry | How you connect | Credential |
+| --- | --- | --- |
+| **OrcaRouter - API** | Paste an `sk-orca-…` key you created in the [OrcaRouter console](https://www.orcarouter.ai) | Your own API key |
+| **OrcaRouter - Auth** | **Connect with OrcaRouter** — authorize in your browser with OAuth 2.0 + PKCE | An API key issued to this app, billed to your account |
+
+Both entries reach the same inference API and the same model list, and both
+store the key wherever this extension already stores provider secrets. Neither
+requires a client secret, and neither needs a redirect URI registered in
+advance. The PKCE-issued key is a normal OrcaRouter API key: it is billed to
+your OrcaRouter account and you can revoke it at any time from
+[Authorized apps](https://www.orcarouter.ai/console/authorized-apps). It is a
+durable grant rather than a refreshable token, so it is reused until revoked.
+
+Model lists are fetched live from `GET https://api.orcarouter.ai/v1/models`
+using your key, then filtered by what the current input can actually send. If
+the catalog is unreachable, a small verified fallback list is shown and clearly
+labelled as degraded — the picker never degrades to free-text entry.
+
+Authentication and inference use different origins: keys come from
+`https://www.orcarouter.ai`, inference runs against
+`https://api.orcarouter.ai/v1`.
 
 🔜 Future plans to support more providers: iFlytek, OpenRoute, ByteDance VolcEngine, and more.
 

@@ -1759,3 +1759,63 @@ export const SYSTEM_MODELS: Record<string, Model[]> = Object.fromEntries(
         Array.isArray(models) ? models.filter(isChatModel) : [],
     ]),
 );
+
+/**
+ * OrcaRouter fallback catalog (cold-start seed only).
+ *
+ * The authoritative list comes from `GET https://api.orcarouter.ai/v1/models`
+ * at runtime (see `src/orcarouter/catalog.ts`). This seed exists so a fresh
+ * install with no network still has a usable picker. It is deliberately small,
+ * every entry is verified, and each keeps its verified capability metadata —
+ * including the reasoning-effort ladder. It is never merged into a successful
+ * live result.
+ *
+ * When live discovery fails, the UI must show a degraded/refresh notice rather
+ * than presenting these as the full catalog.
+ */
+RAW_SYSTEM_MODELS['orcarouter'] = [
+    {
+        id: 'openai/gpt-5.5',
+        provider: 'orcarouter',
+        name: 'GPT-5.5',
+        group: 'GPT-5.5',
+        description: 'context 400,000 · input text/image · effort low/medium/high/xhigh',
+        type: ['text', 'vision', 'reasoning'],
+    },
+    {
+        id: 'anthropic/claude-opus-4.8',
+        provider: 'orcarouter',
+        name: 'Claude Opus 4.8',
+        group: 'Claude 4.8',
+        description: 'context 200,000 · input text/image · effort low/medium/high',
+        type: ['text', 'vision', 'reasoning'],
+    },
+    {
+        id: 'google/gemini-3.5-flash',
+        provider: 'orcarouter',
+        name: 'Gemini 3.5 Flash',
+        group: 'Gemini 3.5',
+        description: 'context 1,000,000 · input text/image/audio/video · effort low/medium/high',
+        type: ['text', 'vision', 'reasoning'],
+    },
+    {
+        id: 'deepseek/deepseek-v4-pro',
+        provider: 'orcarouter',
+        name: 'DeepSeek V4 Pro',
+        group: 'DeepSeek V4',
+        description: 'context 128,000 · input text · effort low/medium/high',
+        type: ['text', 'reasoning'],
+    },
+    {
+        id: 'orcarouter/auto',
+        provider: 'orcarouter',
+        name: 'OrcaRouter Auto',
+        group: 'OrcaRouter',
+        description: 'Adaptive gateway routing across the catalog.',
+        type: ['text', 'vision', 'reasoning'],
+    },
+];
+
+// "OrcaRouter - Auth" is the same gateway reached with a PKCE-issued key, so it
+// offers the same models. Share the seed rather than duplicating it.
+RAW_SYSTEM_MODELS['orcarouter-oauth'] = RAW_SYSTEM_MODELS['orcarouter'];
